@@ -484,9 +484,9 @@ df_FarOut_tidy <-
 df_FarOut_tidy$seabird_ct[is.na(df_FarOut_tidy$seabird_ct)] <- 1
 
 ## Check it -- OK!
-# tmp <- 
+# tmp <-
 #   df_FarOut_tidy %>%
-#   dplyr::filter(home_screen == "Seabird count") %>% 
+#   dplyr::filter(home_screen == "Seabird count") %>%
 #   dplyr::filter(is.na(seabird_ct))
 
 ## "id": delete and do it again
@@ -542,36 +542,46 @@ df_FarOut_tidy <-
     swell, bf, date, hour, note, seabird_note
   )
 
-## Create 'season' col
-df_FarOut_tidy <- 
-  df_FarOut_tidy %>%
-  dplyr::mutate(month = lubridate::month(date), 
-                season = ifelse(month == 12 | month == 1 | month == 2, "summer",
-                         ifelse(month == 3 | month == 4 | month == 5, "autumn",
-                         ifelse(month == 6 | month == 7 | month == 8, "winter", 
-                         "spring")))) %>%
-  dplyr::select(-month) %>%
-  dplyr::relocate(season, .before = home_screen)
-
 ## Create 'voyage' col
-df_FarOut_tidy <- 
-  df_FarOut_tidy %>%
-  dplyr::mutate(voyage = ifelse(date <= "2019-11-17", "voyage1",
-                         ifelse(date >= "2020-01-27" & date <= "2020-02-05", "voyage2",
-                         ifelse(date >= "2021-01-10" & date <= "2021-01-23", "voyage3",
-                         ifelse(date >= "2021-07-14" & date <= "2021-07-15", "voyage4", 
-                         ifelse(date >= "2022-01-18" & date <= "2022-01-26", "voyage5", 
-                         ifelse(date >= "2023-01-20" & date <= "2023-01-24", "voyage6",
-                                "voyage7"))))))) %>% 
-  dplyr::relocate(voyage, .before = home_screen)
 
 # Voyage 1: 2019-11-05 -- 2019-11-17
 # Voyage 2: 2020-01-27 -- 2020-02-05
 # Voyage 3: 2021-01-10 -- 2021-01-23
 # Voyage 4: 2021-07-14 -- 2021-07-15
 # Voyage 5: 2022-01-18 -- 2022-01-26
-# Voyage 6: 2023-01-20 -- 2023-01-24
-# Voyage 7: 2023-05-25 -- 2023-05-26
+# Voyage 6: 2022-11-12 -- 2022-11-20 ***
+# Voyage 7: 2023-01-20 -- 2023-01-24
+# Voyage 8: 2023-05-25 -- 2023-05-26
+# Voyage 9: 2023-11-14 -- 2023-11-25
+
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>%
+  dplyr::mutate(voyage = dplyr::case_when(
+    date <= "2019-11-17" ~ "voyage1",
+    date >= "2020-01-27" & date <= "2020-02-05" ~ "voyage2",
+    date >= "2021-01-10" & date <= "2021-01-23" ~ "voyage3",
+    date >= "2021-07-14" & date <= "2021-07-15" ~ "voyage4", 
+    date >= "2022-01-18" & date <= "2022-01-26" ~ "voyage5", 
+    date >= "2022-11-12" & date <= "2022-11-20" ~ "voyage6", 
+    date >= "2023-01-20" & date <= "2023-01-24" ~ "voyage7",
+    date >= "2023-05-25" & date <= "2023-05-26" ~ "voyage8", 
+    date >= "2023-11-14" & date <= "2023-11-25" ~ "voyage9"), 
+    .before = home_screen)
+
+## Create 'season' col
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>%
+  dplyr::mutate(season = dplyr::case_when(
+    voyage == "voyage1" ~ "spring",
+    voyage == "voyage2" ~ "summer",
+    voyage == "voyage3" ~ "summer",
+    voyage == "voyage4" ~ "winter",
+    voyage == "voyage5" ~ "summer",
+    voyage == "voyage6" ~ "spring",
+    voyage == "voyage7" ~ "summer",
+    voyage == "voyage8" ~ "winter",
+    voyage == "voyage9" ~ "spring"), 
+    .before = home_screen)
 
 ## A few more rows need to be deleted, according to notes (see 'tmp')
 tmp <- 
