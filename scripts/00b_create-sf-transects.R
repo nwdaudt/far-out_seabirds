@@ -26,14 +26,14 @@ sf_FarOut_transects <- FUN_create_line_segments(sf_FarOut_transects)
 # mapview::mapview(sf_FarOut_transects, zcol = "ID")
 
 ## Save it
-sf::write_sf(sf_FarOut_transects, 
-             "./data-spatial/transects/far-out_6-transects.gpkg")
+# sf::write_sf(sf_FarOut_transects, 
+#              "./data-spatial/transects/far-out_6-transects.gpkg")
 
-## Split linestrings into equal parts (not sure if I'll use it) ####
+## Split linestrings into equal parts ####
 
 sf_FarOut_transects <- 
   FUN_split_linestrings(df = sf_FarOut_transects,
-                        n = 3, 
+                        n = 2, 
                         dist = 3, # due to geometries approximation, there is usually a gap of a few meters
                         crs = 2193) # NZ Transverse Mercator
 
@@ -58,5 +58,5 @@ sf_FarOut_transects <-
 
 ## Save it
 
-sf::write_sf(sf_FarOut_transects, 
-             "./data-spatial/transects/far-out_segmented-transects.gpkg")
+# sf::write_sf(sf_FarOut_transects, 
+#              "./data-spatial/transects/far-out_segmented-transects.gpkg")

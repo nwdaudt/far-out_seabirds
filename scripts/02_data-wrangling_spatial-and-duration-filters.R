@@ -18,6 +18,15 @@ df_wide_species <- read.csv("./data-processed/raw-tidy/seabird-raw-tidy-wide-spe
 ## Read spatial data ####
 
 transects <- sf::read_sf("./data-spatial/transects/far-out_6-transects.gpkg")
+# mapview::mapview(transects)
+
+transects_segmented <- sf::read_sf("./data-spatial/transects/far-out_segmented-transects.gpkg")
+# mapview::mapview(transects_segmented)
+
+transects_segmented_buffer <- 
+  sf::st_buffer(transects_segmented, endCapStyle = "FLAT", dist = 1500) %>% 
+  sf::st_transform(4326)
+# mapview::mapview(transects_segmented_buffer)
 
 ## Make a convex polygon around the transects (+ add a buffer),
 ## to create a spatial filter of the data
@@ -42,7 +51,7 @@ transects_poly_buffer <- sf::st_buffer(transects_poly, dist = 3000) # 3 km buffe
 
 rm("transects_df", "transects_poly")
 
-## Spatial filter #### 
+## Spatial filter and Spatial join with transects #### 
 
 dfs <- list(df_long = df_long, 
             df_wide_groups = df_wide_groups, 
@@ -60,9 +69,17 @@ for(i in 1:length(dfs)){
     sf::st_as_sf(coords = c("lon2", "lat2"), crs = 4326)
   # mapview::mapview(sf)
   
-  # Spatial filter: get only records inside the transect polygon
+  ### Spatial filter: get only records inside the transect polygon
   sf <- 
     sf::st_intersection(sf, transects_poly_buffer)
+  # mapview::mapview(sf)
+  
+  ### Spatial join with transects
+  sf <- 
+    sf::st_join(sf,
+                (transects_segmented_buffer %>% 
+                   dplyr::select(id_transect = id))) %>% 
+    dplyr::filter(!is.na(id_transect))
   # mapview::mapview(sf)
   
   # Transform it back to 'data.frame'
@@ -78,21 +95,20 @@ for(i in 1:length(dfs)){
 # sf::write_sf(transects_poly_buffer, 
 #              "./data-spatial/transects/far-out_transects-3km-buffer-polygon.gpkg")
 
-rm("transects_poly_buffer")
+rm("transects_poly_buffer", "transects_segmented_buffer", "transects_segmented")
 
 ## `id_count_duration` filter ####
 
 ## EDA distance and duration of counts
-
-boxplot(df_wide_groups$id_count_duration)
-boxplot(df_wide_groups$id_dist_km)
-plot(df_wide_groups$id_count_duration, df_wide_groups$id_dist_km)
+# boxplot(df_wide_groups$id_count_duration)
+# boxplot(df_wide_groups$id_dist_km)
+# plot(df_wide_groups$id_count_duration, df_wide_groups$id_dist_km)
 
 ## Use quantiles?
 quantile(df_wide_groups$id_count_duration)
 
-# The 25--75% quantiles are too narrow, so I may ARBITRARILY choose -----------#
-# 7-min as minimum, and 13-min  as maximum ------------------------------------#
+# The 25--75% quantiles are too narrow, so I ARBITRARILY chose ----------------#
+# 7-min as minimum and 13-min  as maximum -------------------------------------#
 
 # Overwrite 'dfs' list after spatial filter
 dfs <- list(df_long = df_long, 
@@ -120,3 +136,5 @@ for(i in 1:length(dfs)){
 }
 
 rm("dfs")
+
+## Done -- happy analysis :)

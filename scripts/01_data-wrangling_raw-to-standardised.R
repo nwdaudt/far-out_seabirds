@@ -11,6 +11,7 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(lubridate)
+library(stringr)
 library(janitor)
 library(sf)
 
@@ -24,10 +25,10 @@ df_FarOut <-
 df_FarOut <- dplyr::rename(df_FarOut, hour = time)
 
 ### As per **15/01/2021**, the .csv output template from CyberTracker changed;
-### thus, I needed to wrangle different "data sets" to standardise columns, etc
+### thus, I needed to wrangle different "data sets" to standardise columns, etc.
 
-## Although the template changed in 15-Jan-2021, I had a checklist of cells to 
-## correct util the end of the Summer 2021 trip (23-Jan-2021); 
+## Although the template changed in 15-Jan-2021, I had a (manual) checklist of 
+## cells to correct util the end of the Summer 2021 trip (23-Jan-2021); 
 ## so, I've done the following steps:
 ##
 ## 1 - I filtered up to this trip ('1st data set') and verified the info (see below); 
@@ -234,6 +235,26 @@ df2_FarOut <-
                 australasian_gannet, skua, penguin, other_seabird, 
                 count, sb_count, seabird_note, note)
 
+## The 'hour' column from the last LEG of voyage 9 (20/11/2023 to 23/11/2023) -------------#
+# has a different format. So we need to deal with it right now to not have problems later on
+
+# Subset and deal with 'hour' format
+df2_v9_2ndleg <- 
+  df2_FarOut[5539:6026, ] %>% 
+  dplyr::mutate(hour = 
+                  stringr::str_sub(
+                    as.character(lubridate::parse_date_time(hour, '%I:%M:%S %p'))
+                    , start = 9), 
+                .after = date)
+
+# Subset main dataset and `rbind` back the corrected-format `df2_v9_2ndleg`
+df2_FarOut <- 
+  rbind(df2_FarOut[1:5538,],
+        df2_v9_2ndleg)
+
+rm("df2_v9_2ndleg")
+## ---------------------------------------------------------------------------------------#
+
 ## Set up right column classes
 # Date and time
 df2_FarOut$date_time <- lubridate::dmy_hms(paste(df2_FarOut$date, df2_FarOut$hour))
@@ -279,6 +300,7 @@ df2_FarOut <-
 ## 'home_screen' variable
 df2_FarOut <- 
   df2_FarOut %>% 
+  dplyr::arrange(date_time) %>% 
   dplyr::mutate(id = ifelse(home_screen == "Seabird START", seq(1:n()), NA)) %>% 
   tidyr::fill(id) %>% 
   dplyr::mutate(id = ifelse(home_screen == "Note" | home_screen == "Conditions", 
@@ -304,83 +326,117 @@ notes_check2 <-
 ## Delete duplicated/wrong "Seabird START/END"
 df2_FarOut <- 
   df2_FarOut %>% 
-  dplyr::filter(!c(id == 347 & hour == "9H 1M 23S"),
-                !c(id == 463 & hour == "13H 22M 6S"), 
-                !c(id == 927 & hour == "8H 54M 5S"),
-                !c(id == 1136 & hour == "15H 52M 56S"),
-                !c(id == 508 & hour == "10H 18M 6S"),
-                !c(id == 509 & hour == "10H 18M 32S"),
-                !c(id == 626 & hour == "12H 41M 12S"),
-                !c(id == 626 & hour == "12H 41M 57S"),
-                !c(id == 626 & hour == "12H 45M 0S"))
-
-### "Modify" and "Input" is exactly the same as 'df1_FarOut' 
-### --apart from one line, including "1" in a 'sb_count'--
-### I've done it again to keep track of the changes and the standards
+  dplyr::filter(# duplicated START, delete one
+                !c(date == "2021-01-22" & hour == "9H 1M 23S"),
+                # cancel START (see notes)
+                !c(date == "2021-01-23" & hour == "13H 22M 6S"),
+                # triple START, so delete the first two
+                !c(date == "2021-07-14" & hour == "10H 18M 6S"),
+                !c(date == "2021-07-14" & hour == "10H 18M 32S"),
+                # cancel this next count, no info on possible END time
+                !c(date == "2021-07-15" & hour == "12H 41M 12S"),
+                !c(date == "2021-07-15" & hour == "12H 41M 57S"),
+                !c(date == "2021-07-15" & hour == "12H 45M 0S"),
+                # duplicated END, delete second
+                !c(date == "2022-01-20" & hour == "8H 54M 5S"),
+                # duplicated START, delete first
+                !c(date == "2022-01-23" & hour == "15H 52M 56S"),
+                # duplicated START, delete first
+                !c(date == "2022-11-14" & hour == "16H 15M 11S"),
+                # cancel this next count, no info on possible END time
+                !c(date == "2023-11-23" & hour == "15H 58M 11S"),
+                !c(date == "2023-11-23" & hour == "16H 0M 40S"))
 
 ## Modify 
 # Transform to character temporarily
 df2_FarOut$home_screen <- as.character(df2_FarOut$home_screen)
 df2_FarOut$hour <- as.character(df2_FarOut$hour)
 
+# Modify a 'Seabird END' that should be 'START'
+df2_FarOut$home_screen[df2_FarOut$date == "2023-01-22" & df2_FarOut$hour == "10H 8M 8S"] <- "Seabird START"
+
+# Modify a 'Seabird START' that should be 'END'
+df2_FarOut$home_screen[df2_FarOut$date == "2023-11-23" & df2_FarOut$hour == "10H 39M 24S"] <- "Seabird END"
+
+# Modify a 'Seabird START' that should be 'END'
+df2_FarOut$home_screen[df2_FarOut$date == "2023-11-23" & df2_FarOut$hour == "14H 23M 36S"] <- "Seabird END"
+
 # *Forgotten 'Seabird END', that was logged a couple of minutes after; 
-# push it to the same info as last seabird count.
-df2_FarOut$hour[df2_FarOut$date == "2021-01-15" & df2_FarOut$id == "199" & df2_FarOut$home_screen == "Seabird END"] <- "19H 45M 2S"
-df2_FarOut$lat[df2_FarOut$date == "2021-01-15" & df2_FarOut$id == "199" & df2_FarOut$home_screen == "Seabird END"] <- -34.43981
-df2_FarOut$lon[df2_FarOut$date == "2021-01-15" & df2_FarOut$id == "199" & df2_FarOut$home_screen == "Seabird END"] <- 173.4811
+# push it to the same info as last seabird count (according to note at 19:50:43).
+df2_FarOut$hour[df2_FarOut$date == "2021-01-15" & df2_FarOut$hour == "19H 49M 22S" & df2_FarOut$home_screen == "Seabird END"] <- "19H 45M 2S"
+df2_FarOut$lat[df2_FarOut$date == "2021-01-15" & df2_FarOut$hour == "19H 45M 2S" & df2_FarOut$home_screen == "Seabird END"] <- -34.43981
+df2_FarOut$lon[df2_FarOut$date == "2021-01-15" & df2_FarOut$hour == "19H 45M 2S" & df2_FarOut$home_screen == "Seabird END"] <- 173.4811
 
 # As changed an 'hour' cell above, need to correct the 'date_time' column accordingly
-df2_FarOut$date_time[df2_FarOut$id == "199" & df2_FarOut$home_screen == "Seabird END"] <-
+df2_FarOut$date_time[df2_FarOut$date == "2021-01-15" & df2_FarOut$hour == "19H 45M 2S"] <-
   lubridate::ymd_hms("2021-01-15 19H 45M 2S")
 
 # Back to factor / period
 df2_FarOut$home_screen <- as.factor(df2_FarOut$home_screen)
 df2_FarOut$hour <- lubridate::hms(df2_FarOut$hour)
-    ## Three cells fail to parse in `lubridate::hms(df2_FarOut$hour)`, 
+    ## A few cells fail to parse in `lubridate::hms(df2_FarOut$hour)`, 
     ## but info is saved under the 'date_time' column
 
-# *Forgotten seabird count number
-df2_FarOut$sb_count[df2_FarOut$date == "2021-07-15" & df2_FarOut$hour == "17H 46M 46S" &
-                      df2_FarOut$id == "688" & df2_FarOut$home_screen == "Seabird count"] <- 1
+# *Forgotten seabird count number (according to note at 17:47:44)
+df2_FarOut$sb_count[df2_FarOut$date == "2021-07-15" & df2_FarOut$hour == "17H 46M 46S" & 
+                      df2_FarOut$home_screen == "Seabird count"] <- 1
 
 ## Input missing "Seabird START/END"
 df_input <- data.frame(
   date = lubridate::ymd(c("2021-01-15", "2021-01-15", 
                           "2021-01-15", "2021-01-16",
                           "2021-01-16", "2021-01-22",
-                          "2023-01-22")),
+                          "2022-11-13", "2022-11-14",
+                          "2022-11-14", "2022-11-15",
+                          "2023-01-22", "2023-11-15",
+                          "2023-11-16", "2023-11-21")),
   hour = lubridate::hms(c("12H 41M 49S", "13H 17M 13S", 
                           "17H 32M 15S", "10H 05M 33S",
                           "10H 58M 16S", "12H 53M 30S",
-                          "11H 33M 0S")),
+                          "13H 45M 45S", "11H 12M 50S",
+                          "13H 10M 25S", "7H 37M 56S",
+                          "11H 40M 24S", "8H 36M 4S",
+                          "7H 34M 56S", "13H 29M 47S")),
   date_time = lubridate::ymd_hms(c("2021-01-15 12H 41M 49S", "2021-01-15 13H 17M 13S", 
                                    "2021-01-15 17H 32M 15S", "2021-01-16 10H 05M 33S",
                                    "2021-01-16 10H 58M 16S", "2021-01-22 12H 53M 30S",
-                                   "2023-01-22 11H 33M 0S")),
+                                   "2022-11-13 13H 45M 45S", "2022-11-14 11H 12M 50S",
+                                   "2022-11-14 13H 10M 25S", "2022-11-15 7H 37M 56S",
+                                   "2023-01-22 11H 40M 24S", "2023-11-15 8H 36M 4S",
+                                   "2023-11-16 7H 34M 56S", "2023-11-21 13H 29M 47S")),
   lat = as.numeric(c(-34.24153, -34.26678, 
                      -34.43571, -34.25881,
                      -34.31432, -34.90925,
-                     -34.41700)),
+                     -34.42759, -34.46566,
+                     -34.32663, -34.34787,
+                     -34.40585, -34.63979,
+                     -34.54437, -34.42587)),
   lon = as.numeric(c(173.3656, 173.35281, 
                      173.2771, 174.10574,
                      174.1179, 175.1355,
-                     173.2890)),
+                     173.6422, 173.4513,
+                     173.5155, 173.1439,
+                     173.2921, 173.5695,
+                     173.4244, 173.6320)),
   home_screen = as.factor(c("Seabird END", "Seabird START", 
                             "Seabird END", "Seabird START",
                             "Seabird END", "Seabird START",
-                            "Seabird START")),
+                            "Seabird END", "Seabird START",
+                            "Seabird END", "Seabird END",
+                            "Seabird START", "Seabird START",
+                            "Seabird START", "Seabird START")),
   note = c("forgot to end seabirds", "forgot to start seabird", 
            "forgot to press seabird END", "effort ON - forgot to start seabirds",
            "dolphin sighting - forgot to press seabird END", "forgot to start seabirds, 10mins before the end",
-           "nwd - input START by hand during data wrangling - no comments related to this missing info, though")
+           "nwd - input END by hand", "nwd - input START by hand",
+           "nwd - input END by hand", "nwd - input END by hand",
+           "nwd - input START by hand", "nwd - input START by hand",
+           "nwd - input START by hand", "nwd - input START by hand")
 )
 
 df2_FarOut <- 
   dplyr::bind_rows(df_input, df2_FarOut) %>% 
   dplyr::arrange(date, hour)
-
-# Modify a 'Seabird END' that should be a 'Seabird START'
-df2_FarOut$home_screen[df2_FarOut$id == "1475" & df2_FarOut$hour == "10H 08M 08S"] <- "Seabird START"
 
 rm("df_input", "tmp", "notes_check2")
 
@@ -395,10 +451,24 @@ df2_FarOut <-
                             NA, id)) %>% 
   dplyr::relocate(id, .before = home_screen)
 
+## Check if there are "id"s with more/less than 2 occurrences -- AGAIN
+# (they all should have two -- a START and an END)
+# 
+# id_count_duration <-
+#   df2_FarOut %>%
+#   dplyr::select(id, home_screen, date_time) %>%
+#   dplyr::filter(home_screen == "Seabird START" | home_screen == "Seabird END")
+# 
+# tmp <- plyr::count(id_count_duration$id)
+# tmp <- dplyr::filter(tmp, ! freq == 2)       ## ------- OK !!
+# 
+# rm("id_count_duration", "tmp")
+
 ## Create an object to check duration of each count; then merge it with the main data set
 id_count_duration <- 
   df2_FarOut %>% 
   dplyr::select(id, home_screen, date_time) %>% 
+  dplyr::arrange(date_time) %>% 
   dplyr::filter(home_screen == "Seabird START" | home_screen == "Seabird END") %>% 
   tidyr::pivot_wider(names_from = home_screen, values_from = date_time) %>% 
   dplyr::rename(seabird_start = "Seabird START", 
@@ -489,7 +559,7 @@ df_FarOut_tidy$seabird_ct[is.na(df_FarOut_tidy$seabird_ct)] <- 1
 #   dplyr::filter(home_screen == "Seabird count") %>%
 #   dplyr::filter(is.na(seabird_ct))
 
-## "id": delete and do it again
+## "id": delete and do it again (yes, I know...)
 df_FarOut_tidy <-
   df_FarOut_tidy %>% 
   dplyr::select(- id) %>% 
@@ -498,7 +568,7 @@ df_FarOut_tidy <-
   dplyr::relocate(id, .before = home_screen)
 
 ## Check if there are "id"s with more/less than 2 occurrences
-# (they all should have two -- a START and an END) -- OK!
+# (they all should have two -- a START and an END) # --------- OK!
 # tmp <-
 #   dplyr::filter(df_FarOut_tidy, home_screen == "Seabird START" | home_screen == "Seabird END")
 # tmp <- plyr::count(tmp$id)
@@ -549,7 +619,7 @@ df_FarOut_tidy <-
 # Voyage 3: 2021-01-10 -- 2021-01-23
 # Voyage 4: 2021-07-14 -- 2021-07-15
 # Voyage 5: 2022-01-18 -- 2022-01-26
-# Voyage 6: 2022-11-12 -- 2022-11-20 ***
+# Voyage 6: 2022-11-12 -- 2022-11-20
 # Voyage 7: 2023-01-20 -- 2023-01-24
 # Voyage 8: 2023-05-25 -- 2023-05-26
 # Voyage 9: 2023-11-14 -- 2023-11-25
@@ -583,7 +653,7 @@ df_FarOut_tidy <-
     voyage == "voyage9" ~ "spring"), 
     .before = home_screen)
 
-## A few more rows need to be deleted, according to notes (see 'tmp')
+## A few more rows need to be deleted, according to notes (see 'tmp' below)
 tmp <- 
   df_FarOut_tidy %>% 
   dplyr::filter(!is.na(note) | !is.na(seabird_note)) %>% 
@@ -692,8 +762,8 @@ id_df <-
                    hour = 
                      lubridate::seconds_to_period(mean(
                        lubridate::period_to_seconds(hour)))) %>%
-## And then we can join with the previous 'id_df' 
-## (note that I've piped this next bit of code to avoid creating an unnecessary object)
+  ## And then we can join with the previous 'id_df' 
+  ## (note that I've piped this next bit of code to avoid creating an unnecessary object)
   dplyr::left_join(id_df, ., by = "id") %>%
   dplyr::relocate(c(hour, lat, lon), .before = "season")
 
@@ -713,8 +783,8 @@ gr_df <-
   dplyr::ungroup(.) %>% 
   tidyr::pivot_wider(id_cols = id,
                      names_from = seabird_gr,
-                     values_from = seabird_ct) %>%
-  replace(is.na(.), 0)
+                     values_from = seabird_ct,
+                     values_fill = 0)
 
 df_FarOut_wide_gr <- 
   dplyr::left_join(id_df, gr_df, by = "id") %>%
@@ -734,8 +804,8 @@ sp_df <-
   dplyr::summarise(seabird_ct = sum(seabird_ct)) %>%
   tidyr::pivot_wider(id_cols = id,
                      names_from = seabird_sp,
-                     values_from = seabird_ct) %>%
-  replace(is.na(.), 0)
+                     values_from = seabird_ct,
+                     values_fill = 0)
 
 df_FarOut_wide_sp <- 
   dplyr::left_join(id_df, sp_df, by = "id") %>%
@@ -748,3 +818,4 @@ readr::write_csv(df_FarOut_wide_sp,
 
 ## Clean environment
 rm("id_df", "gr_df", "sp_df")
+
