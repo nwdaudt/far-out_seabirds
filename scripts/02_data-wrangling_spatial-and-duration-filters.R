@@ -91,9 +91,13 @@ for(i in 1:length(dfs)){
   rm("i", "name", "sf", "df")
 }
 
-## Save the buffer polygon and remove it from the environment
+## Save the buffer 'polygon' and remove it from the environment
 # sf::write_sf(transects_poly_buffer, 
 #              "./data-spatial/transects/far-out_transects-3km-buffer-polygon.gpkg")
+
+## Save the buffer 'transect_segmented' and remove it from the environment
+# sf::write_sf(transects_segmented_buffer,
+#              "./data-spatial/transects/far-out_segmented-transects-buffer.gpkg")
 
 rm("transects_poly_buffer", "transects_segmented_buffer", "transects_segmented")
 
