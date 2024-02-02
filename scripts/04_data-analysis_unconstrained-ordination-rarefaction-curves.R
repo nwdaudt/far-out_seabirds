@@ -12,6 +12,7 @@ library(tidyr)
 library(ggplot2)
 library(patchwork)
 library(gllvm)
+library(corrplot)
 library(iNEXT)
 
 # >>> Colours
@@ -29,7 +30,9 @@ library(iNEXT)
 
 df_wide_species <- 
   read.csv("./data-processed/df_wide_species.csv")[, -1] %>% 
-  dplyr::mutate(season = factor(season, levels = c("summer", "autumn", "winter", "spring")))
+  dplyr::mutate(season = factor(season, levels = c("summer", 
+                                                   # "autumn", 
+                                                   "winter", "spring")))
 
 ## Get 'groups' (grps), 'taxa' (spp), and 'species' (sp_only) column mames
 
@@ -76,12 +79,14 @@ df_spp_aggregated <-
                   voyage == "voyage7" ~ "summer",
                   voyage == "voyage8" ~ "winter",
                   voyage == "voyage9" ~ "spring")) %>% 
-  dplyr::mutate(season = factor(season, levels = c("summer", "autumn", "winter", "spring"))) %>% 
+  dplyr::mutate(season = factor(season, levels = c("summer", 
+                                                   # "autumn", 
+                                                   "winter", "spring"))) %>% 
   dplyr::ungroup(.)
 
 ## Note: I haven't summarised aggregated 'groups', as we won't use these for ordination
 
-### Unconstrained GLLVM (purely species composition) ####
+## Prep for modelling ####
 
 # First, identify 'rare' species (i.e. less than 3 occurrences)
 sp_rare_cols <- 
@@ -102,10 +107,13 @@ spp_matrix <-
   # But, remove rare species columns -- they will be more noisy than explanatory
   dplyr::select(- all_of(sp_rare_cols))
 
+### Unconstrained GLLVM (purely species composition) ####
+
 ### Run the model
 unconstrained_model <-
   gllvm::gllvm(y = spp_matrix, 
-               num.lv = 2, family = "negative.binomial",
+               num.lv = 2, 
+               family = "negative.binomial",
                seed = 1234)
 
 ## Residuals -- look good!
@@ -116,18 +124,7 @@ unconstrained_model <-
 # summary(unconstrained_model)
 ## ordiplot.gllvm(unconstrained_model, biplot = TRUE, ind.spp = 10)
 
-## Get LV values
-
-# (( Not sure if I need this ? ))
-# unconstrained_latent_vars <- as.data.frame(gllvm::getLV.gllvm(unconstrained_model))
-# 
-# unconstrained_latent_vars_spp <- 
-#   as.data.frame(unconstrained_model$params$theta) %>% 
-#   tibble::rownames_to_column(var = "species") %>%
-#   # not sure why, but "ID" isn't a species -- thus, remove it
-#   dplyr::filter(! species == "ID")
-
-## Arrange a df to plot
+## Get LV values and arrange it in a dataframe to plot
 df_plot_unconstrained_model <-
   cbind((df_spp_aggregated %>% dplyr::select(season)),
         as.data.frame(gllvm::getLV.gllvm(unconstrained_model)))
@@ -151,6 +148,98 @@ ggsave(plot_unconstrained_model,
 
 saveRDS(unconstrained_model, 
         file = "./results/gllvm_unconstrained_model.rds")
+
+### Unconstrained GLLVM (accounting for 'season') ####
+
+## From {gllvm} Vignette 6 -----------------------------------------------------#
+# << https://jenniniku.github.io/gllvm/articles/vignette6.html >>
+# "When including predictor variables, the interpretation of the ordination would
+# shift to a residual ordination, conditional on the predictors."
+## [Accessed on 2 Feb 2024] ----------------------------------------------------#
+
+unconstrained_model_season <-
+  gllvm::gllvm(y = spp_matrix, 
+               X = data.frame(season = df_spp_aggregated$season,
+                              voyage = df_spp_aggregated$voyage),
+               formula = ~ season,
+               num.lv = 2,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
+## Residuals -- look good!
+# pdf(file = "./results/gllvm_unconstrained_season_residuals.pdf")
+# plot(unconstrained_model_season, which = 1:4, mfrow = c(2,2))
+# dev.off()
+
+# summary(unconstrained_model_season)
+## ordiplot.gllvm(unconstrained_model_season, biplot = TRUE, ind.spp = 10)
+
+## Get LV values and arrange it in a dataframe to plot
+df_plot_unconstrained_season_model <-
+  cbind((df_spp_aggregated %>% dplyr::select(season)),
+        as.data.frame(gllvm::getLV.gllvm(unconstrained_model_season)))
+
+## Plot
+plot_unconstrained_season_model <- 
+  ggplot(data = df_plot_unconstrained_season_model, 
+         aes(x = LV1, y = LV2, color = season)) +
+  geom_point() + 
+  scale_color_manual(values = c("summer" = "#E69F00", "winter" = "#56B4E9", "spring" = "grey50")) +
+  theme_bw() + 
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14))
+
+ggsave(plot_unconstrained_season_model,
+       filename = "./results/gllvm_unconstrained_season_biplot.pdf",
+       height = 9, width = 12, units = "cm", dpi = 300)
+
+saveRDS(unconstrained_model_season, 
+        file = "./results/gllvm_unconstrained_season_model.rds")
+
+## - coefplot [[[COME BACK HERE]]] ####
+
+## ------- How to plot 'seasonsummer', the intercept?
+gllvm::coefplot(unconstrained_model_season)
+
+# After 'coefplot' we need to re-set graphical parameters back
+par(mfrow = c(1, 1), mar= c(5, 4, 4, 2) + 0.1)
+
+### Co-occurrence patterns & Variation explained ####
+
+## From {gllvm} Vignette 1 -----------------------------------------------------#
+# << https://jenniniku.github.io/gllvm/articles/vignette1.html#studying-co-occurrence-patterns >>
+## [Accessed on 2 Feb 2024] ----------------------------------------------------#
+
+## --- Visualise co-occurrence patterns with, and without accounting for predictors --- ##
+
+## Get residual correlation matrix for each model
+residuals_corr_unconstrained <- gllvm::getResidualCor(unconstrained_model)
+residuals_corr_unconstrained_season <- gllvm::getResidualCor(unconstrained_model_season)
+
+## Plot co-occurrence patterns (residual correlation between species)
+pdf(file = "./results/gllvm_residual-correlation-matrices_co-occurrence.pdf", height = 4, width = 12)
+par(mfrow = c(1,2))
+# unconstrained without predictors
+corrplot::corrplot(residuals_corr_unconstrained, diag = FALSE, type = "lower", 
+                   method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8, 
+                   col = COL2('PuOr'), cl.cex = 0.68)
+# unconstrained with predictors (season)
+corrplot::corrplot(residuals_corr_unconstrained_season, diag = FALSE, type = "lower", 
+                   method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8,
+                   col = COL2('PuOr'), cl.cex = 0.68)
+dev.off()
+
+## --- How much of the variation of the data did the predictor accounted for? --- ##
+
+## Get residual covariance matrix for each model
+residuals_cov_unconstrained <- gllvm::getResidualCov(unconstrained_model)
+residuals_cov_unconstrained_season <- gllvm::getResidualCov(unconstrained_model_season)
+
+(1 - residuals_cov_unconstrained_season$trace / residuals_cov_unconstrained$trace) * 100
+## >> 45.39177
 
 ### {iNEXT} - rarefaction curves ####
 
