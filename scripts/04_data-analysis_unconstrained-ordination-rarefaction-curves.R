@@ -199,13 +199,29 @@ ggsave(plot_unconstrained_season_model,
 saveRDS(unconstrained_model_season, 
         file = "./results/gllvm_unconstrained_season_model.rds")
 
-## - coefplot [[[COME BACK HERE]]] ####
+## Season effect on species -- gllvm::coefplot ####
 
-## ------- How to plot 'seasonsummer', the intercept?
-gllvm::coefplot(unconstrained_model_season)
+pdf(file = "./results/gllvm_coefplot-season.pdf", height = 7, width = 11)
+# Graphical parameters
+par(mfrow = c(1, 2), 
+    mar = c(0.1, 0.1, 0.1, 0.1), 
+    oma = c(1, 6.5, 1, 1))
 
-# After 'coefplot' we need to re-set graphical parameters back
-par(mfrow = c(1, 1), mar= c(5, 4, 4, 2) + 0.1)
+gllvm::coefplot(unconstrained_model_season,
+                order = FALSE,
+                cex.ylab = 1,
+                which.Xcoef = 1 # Winter
+                )
+
+gllvm::coefplot(unconstrained_model_season,
+                order = FALSE,
+                cex.ylab = 0.001,
+                which.Xcoef = 2 # Spring
+                )
+dev.off()
+
+# After 'coefplot' we need to re-set graphical parameters back to default
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
 ### Co-occurrence patterns & Variation explained ####
 
@@ -231,6 +247,9 @@ corrplot::corrplot(residuals_corr_unconstrained_season, diag = FALSE, type = "lo
                    method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8,
                    col = COL2('PuOr'), cl.cex = 0.68)
 dev.off()
+
+# After 'correlation' plots we need to re-set graphical parameters back to default
+par(mfrow = c(1, 1))
 
 ## --- How much of the variation of the data did the predictor accounted for? --- ##
 
