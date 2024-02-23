@@ -1,5 +1,5 @@
 ## 
-## Unconstrained ordination & rarefaction curves
+## Unconstrained ordinations & rarefaction curves
 ##
 ## -------------------------------------------------------------------------- ##
 ## -------------------------------------------------------------------------- ##
@@ -34,7 +34,7 @@ df_wide_species <-
                                                    # "autumn", 
                                                    "winter", "spring")))
 
-## Get 'groups' (grps), 'taxa' (spp), and 'species' (sp_only) column mames
+## Get 'groups' (grps), 'taxa' (spp), and 'species' (sp_only) column names
 
 # grps_cols <- colnames(df_wide_groups[12:20])
 spp_cols <- colnames(df_wide_species[12:48]) # All "species" cols
@@ -107,7 +107,7 @@ spp_matrix <-
   # But, remove rare species columns -- they will be more noisy than explanatory
   dplyr::select(- all_of(sp_rare_cols))
 
-### Unconstrained GLLVM (purely species composition) ####
+### Unconstrained GLLVM, lv = 2 (purely species composition) ####
 
 ### Run the model
 unconstrained_model <-
@@ -122,7 +122,7 @@ unconstrained_model <-
 # dev.off()
 
 # summary(unconstrained_model)
-## ordiplot.gllvm(unconstrained_model, biplot = TRUE, ind.spp = 10)
+# ordiplot.gllvm(unconstrained_model, biplot = TRUE, ind.spp = 10)
 
 ## Get LV values and arrange it in a dataframe to plot
 df_plot_unconstrained_model <-
@@ -142,14 +142,14 @@ plot_unconstrained_model <-
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 14))
 
-ggsave(plot_unconstrained_model,
-       filename = "./results/gllvm_unconstrained_biplot.pdf",
-       height = 9, width = 12, units = "cm", dpi = 300)
+# ggsave(plot_unconstrained_model,
+#        filename = "./results/gllvm_unconstrained_biplot.pdf",
+#        height = 9, width = 12, units = "cm", dpi = 300)
 
-saveRDS(unconstrained_model, 
-        file = "./results/gllvm_unconstrained_model.rds")
+# saveRDS(unconstrained_model, 
+#         file = "./results/gllvm_unconstrained_model.rds")
 
-### Unconstrained GLLVM (accounting for 'season') ####
+### Unconstrained GLLVM, lv = 2 (accounting for 'season') ####
 
 ## From {gllvm} Vignette 6 -----------------------------------------------------#
 # << https://jenniniku.github.io/gllvm/articles/vignette6.html >>
@@ -157,7 +157,7 @@ saveRDS(unconstrained_model,
 # shift to a residual ordination, conditional on the predictors."
 ## [Accessed on 2 Feb 2024] ----------------------------------------------------#
 
-unconstrained_model_season <-
+unconstrained_model_lv2_season <-
   gllvm::gllvm(y = spp_matrix, 
                X = data.frame(season = df_spp_aggregated$season,
                               voyage = df_spp_aggregated$voyage),
@@ -168,21 +168,21 @@ unconstrained_model_season <-
                seed = 1234)
 
 ## Residuals -- look good!
-# pdf(file = "./results/gllvm_unconstrained_season_residuals.pdf")
-# plot(unconstrained_model_season, which = 1:4, mfrow = c(2,2))
+# pdf(file = "./results/gllvm_unconstrained_lv2_season_residuals.pdf")
+# plot(unconstrained_model_lv2_season, which = 1:4, mfrow = c(2,2))
 # dev.off()
 
 # summary(unconstrained_model_season)
-## ordiplot.gllvm(unconstrained_model_season, biplot = TRUE, ind.spp = 10)
+# ordiplot.gllvm(unconstrained_model_lv2_season, biplot = TRUE, ind.spp = 10)
 
 ## Get LV values and arrange it in a dataframe to plot
-df_plot_unconstrained_season_model <-
+df_plot_unconstrained_lv2_season_model <-
   cbind((df_spp_aggregated %>% dplyr::select(season)),
-        as.data.frame(gllvm::getLV.gllvm(unconstrained_model_season)))
+        as.data.frame(gllvm::getLV.gllvm(unconstrained_model_lv2_season)))
 
 ## Plot
-plot_unconstrained_season_model <- 
-  ggplot(data = df_plot_unconstrained_season_model, 
+plot_unconstrained_lv2_season_model <- 
+  ggplot(data = df_plot_unconstrained_lv2_season_model, 
          aes(x = LV1, y = LV2, color = season)) +
   geom_point() + 
   scale_color_manual(values = c("summer" = "#E69F00", "winter" = "#56B4E9", "spring" = "grey50")) +
@@ -192,32 +192,156 @@ plot_unconstrained_season_model <-
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 14))
 
-ggsave(plot_unconstrained_season_model,
-       filename = "./results/gllvm_unconstrained_season_biplot.pdf",
-       height = 9, width = 12, units = "cm", dpi = 300)
+# ggsave(plot_unconstrained_lv2_season_model,
+#        filename = "./results/gllvm_unconstrained_lv2_season_biplot.pdf",
+#        height = 9, width = 12, units = "cm", dpi = 300)
 
-saveRDS(unconstrained_model_season, 
-        file = "./results/gllvm_unconstrained_season_model.rds")
+# saveRDS(unconstrained_model_season,
+#         file = "./results/gllvm_unconstrained_lv2_season_model.rds")
 
-## Season effect on species -- gllvm::coefplot ####
+### Unconstrained GLLVM, lv = 0 (accounting for 'season') -- a "multivariate GLM" ####
 
-pdf(file = "./results/gllvm_coefplot-season.pdf", height = 7, width = 11)
+unconstrained_model_lv0_season <-
+  gllvm::gllvm(y = spp_matrix, 
+               X = data.frame(season = df_spp_aggregated$season,
+                              voyage = df_spp_aggregated$voyage),
+               formula = ~ season,
+               num.lv = 0,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
+## Residuals -- look good!
+# pdf(file = "./results/gllvm_unconstrained_lv0_season_residuals.pdf")
+# plot(unconstrained_model_lv0_season, which = 1:4, mfrow = c(2,2))
+# dev.off()
+
+# summary(unconstrained_model_lv0_season)
+
+### As there is no LV, there is no way of making an 'ordination plot'
+
+# saveRDS(unconstrained_model_lv0_season,
+#         file = "./results/gllvm_unconstrained_lv0_season_model.rds")
+
+### Comparing predictions between GLLVMs accounting for season, with(out) LVs, and raw data ####
+
+## Get predicted/expected values for unconstrained model *without* LVs (lv0)
+
+fitmod_lv0 <- data.frame(
+  exp(
+    predict(unconstrained_model_lv0_season, newX = data.frame(season = df_spp_aggregated$season))
+    )
+  )
+
+fitmod_lv0 <- fitmod_lv0[order(df_spp_aggregated$season), ]
+
+fitlong_lv0 <- 
+  tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0), fitmod_lv0), 
+                key = "Species", value = "Number", 
+                bullers_shearwater:fairy_prion)
+
+fitlong_lv0 <-
+  cbind(fitlong_lv0, Source = rep("LV = 0", times = nrow(fitlong_lv0)))
+
+## Get predicted/expected values for unconstrained model *with* LVs (lv2)
+
+fitmod_lv2 <- data.frame(
+  exp(
+    predict(unconstrained_model_lv2_season, newX = data.frame(season = df_spp_aggregated$season))
+  )
+)
+
+fitmod_lv2 <- fitmod_lv2[order(df_spp_aggregated$season), ]
+
+fitlong_lv2 <- 
+  tidyr::gather(data.frame(site = 1:nrow(fitmod_lv2), fitmod_lv2), 
+                key = "Species", value = "Number", 
+                bullers_shearwater:fairy_prion)
+
+fitlong_lv2 <-
+  cbind(fitlong_lv2, Source = rep("LV = 2", times = nrow(fitlong_lv2)))
+
+rm("fitmod_lv2")
+
+## Reshape raw data to the same format
+yord <- spp_matrix[order(df_spp_aggregated$season), ]
+
+ylong <- 
+  tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0), yord), 
+                key = "Species", value = "Number", 
+                bullers_shearwater:fairy_prion)
+
+ylong <-
+  cbind(ylong, Source = rep("Raw data", times = nrow(ylong)))
+
+rm("yord", "fitmod_lv0")
+
+## Bind dataframes
+df_lv0_lv2_raw <- rbind(fitlong_lv0, fitlong_lv2, ylong)
+
+rm("fitlong_lv0", "fitlong_lv2", "ylong")
+
+## Compare results through a plot
+
+plot_comparing_lv0_lv2_raw <-
+  ggplot(data = df_lv0_lv2_raw, aes(x = site, y = Number, colour = Source, shape = Source)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("#000000", "#F8766D", "#00BA38")) +
+  facet_wrap(~ Species, scales = "free_y") + 
+  ylab("Number") + xlab("Sample") +
+  theme_bw() +
+  theme(legend.position = c(0.9, 0.1),
+        legend.title = element_blank(),
+        strip.text = element_text(size = 6),
+        axis.text = element_text(size = 6),
+        axis.title = element_text(size = 6))
+
+# ggsave(plot_comparing_lv0_lv2_raw,
+#        filename = "./results/comparing_lv0_lv2_raw.pdf",
+#        height = 15, width = 20, units = "cm", dpi = 300)
+
+### Season effect on species -- gllvm::coefplot ####
+
+## Plot season effect based on lv0 model
+
+pdf(file = "./results/gllvm_coefplot-season_lv0.pdf", height = 7, width = 11)
 # Graphical parameters
 par(mfrow = c(1, 2), 
     mar = c(0.1, 0.1, 0.1, 0.1), 
     oma = c(1, 6.5, 1, 1))
 
-gllvm::coefplot(unconstrained_model_season,
+gllvm::coefplot(unconstrained_model_lv0_season,
                 order = FALSE,
                 cex.ylab = 1,
                 which.Xcoef = 1 # Winter
                 )
 
-gllvm::coefplot(unconstrained_model_season,
+gllvm::coefplot(unconstrained_model_lv0_season,
                 order = FALSE,
                 cex.ylab = 0.001,
                 which.Xcoef = 2 # Spring
                 )
+dev.off()
+
+## Plot season effect based on lv2 model
+
+pdf(file = "./results/gllvm_coefplot-season_lv2.pdf", height = 7, width = 11)
+# Graphical parameters
+par(mfrow = c(1, 2), 
+    mar = c(0.1, 0.1, 0.1, 0.1), 
+    oma = c(1, 6.5, 1, 1))
+
+gllvm::coefplot(unconstrained_model_lv2_season,
+                order = FALSE,
+                cex.ylab = 1,
+                which.Xcoef = 1 # Winter
+)
+
+gllvm::coefplot(unconstrained_model_lv2_season,
+                order = FALSE,
+                cex.ylab = 0.001,
+                which.Xcoef = 2 # Spring
+)
 dev.off()
 
 # After 'coefplot' we need to re-set graphical parameters back to default
@@ -233,7 +357,7 @@ par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
 ## Get residual correlation matrix for each model
 residuals_corr_unconstrained <- gllvm::getResidualCor(unconstrained_model)
-residuals_corr_unconstrained_season <- gllvm::getResidualCor(unconstrained_model_season)
+residuals_corr_unconstrained_season_lv2 <- gllvm::getResidualCor(unconstrained_model_lv2_season)
 
 ## Plot co-occurrence patterns (residual correlation between species)
 pdf(file = "./results/gllvm_residual-correlation-matrices_co-occurrence.pdf", height = 4, width = 12)
@@ -243,7 +367,7 @@ corrplot::corrplot(residuals_corr_unconstrained, diag = FALSE, type = "lower",
                    method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8, 
                    col = COL2('PuOr'), cl.cex = 0.68)
 # unconstrained with predictors (season)
-corrplot::corrplot(residuals_corr_unconstrained_season, diag = FALSE, type = "lower", 
+corrplot::corrplot(residuals_corr_unconstrained_season_lv2, diag = FALSE, type = "lower", 
                    method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8,
                    col = COL2('PuOr'), cl.cex = 0.68)
 dev.off()
@@ -297,7 +421,7 @@ curve_coverage_based <-
   theme_bw()
 
 # Sample completeness curve
-# curve_sample_completeness <- ggiNEXT(inext_obj, type = 2, se = TRUE)
+# curve_sample_completeness <- iNEXT::ggiNEXT(inext_obj, type = 2, se = TRUE)
 
 inext_plot <- curve_sample_size_based + curve_coverage_based
 
