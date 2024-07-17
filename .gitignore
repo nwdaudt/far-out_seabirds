@@ -2,7 +2,6 @@ data-raw/
 data-processed/
 # data-processed/raw-tidy/
 rmd_tex/
-results/
 
 # History files
 .Rhistory
