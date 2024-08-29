@@ -1,7 +1,29 @@
 data-raw/
 data-processed/
 # data-processed/raw-tidy/
+
+# Environmental layers don't need to be shared as they are publicly available
+data-spatial/environmental-data
+
+# I haven't used those in the maps, so no need to share
+data-spatial/nz/12-mile-territorial-sea-outer-limit.gpkg
+data-spatial/nz/200-mile-exclusive-economic-zone-outer-limit.gpkg
+
+# Exploratory Data Analysis (EDA) -- not necessarily share them all
+results/EDA
+# No need to share CSV and RDS files
+results/*.csv
+results/*.rds
+
+# Rmd/TeX files -- not to share, yet
 rmd_tex/
+
+# Summary of results for Ngati Kuri
+# High-level wording without all the nitty-griddies
+summary-results_seabirds-FarOut.doc
+summary-results_seabirds-FarOut.pdf
+
+
 
 # History files
 .Rhistory
