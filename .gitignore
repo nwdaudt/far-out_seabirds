@@ -4,10 +4,8 @@ data-processed/
 
 # Environmental layers don't need to be shared as they are publicly available
 data-spatial/environmental-data
-
-# I haven't used those in the maps, so no need to share
-data-spatial/nz/12-mile-territorial-sea-outer-limit.gpkg
-data-spatial/nz/200-mile-exclusive-economic-zone-outer-limit.gpkg
+# These files are vectors of the NZ coastline and Isobaths -- no need to add to GitHub
+data-spatial/nz
 
 # Exploratory Data Analysis (EDA) -- not necessarily share them all
 results/EDA
