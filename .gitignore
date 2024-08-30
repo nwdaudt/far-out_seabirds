@@ -2,10 +2,10 @@ data-raw/
 data-processed/
 # data-processed/raw-tidy/
 
-# Environmental layers don't need to be shared as they are publicly available
-data-spatial/environmental-data
-# These files are vectors of the NZ coastline and Isobaths -- no need to add to GitHub
-data-spatial/nz
+data-spatial/
+# Environmental layers don't need to be shared as they are publicly available (data-spatial/environmental-data)
+# NZ coastline and Isobaths are vectors, no need to add to GitHub (data-spatial/nz) 
+# Transects et al are build with scripts, so don't need to share either (data-spatial/transects)
 
 # Exploratory Data Analysis (EDA) -- not necessarily share them all
 results/EDA
