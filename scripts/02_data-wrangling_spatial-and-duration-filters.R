@@ -92,7 +92,7 @@ for(i in 1:length(dfs)){
 }
 
 ## Save the buffer 'polygon' and remove it from the environment
-# sf::write_sf(transects_poly_buffer, 
+# sf::write_sf(transects_poly_buffer,
 #              "./data-spatial/transects/far-out_transects-3km-buffer-polygon.gpkg")
 
 ## Save the buffer 'transect_segmented' and remove it from the environment
@@ -134,7 +134,7 @@ for(i in 1:length(dfs)){
   .GlobalEnv[[name]] <- df
   
   # Save it
-  write.csv(df, paste0("./data-processed/", name, ".csv"))
+  write.csv(df, paste0("./data-processed/", name, ".csv"), row.names = FALSE)
   
   rm("i", "name", "df")
 }

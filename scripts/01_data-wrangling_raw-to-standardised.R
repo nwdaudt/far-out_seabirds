@@ -25,14 +25,14 @@ df_FarOut <-
 df_FarOut <- dplyr::rename(df_FarOut, hour = time)
 
 ### As per **15/01/2021**, the .csv output template from CyberTracker changed;
-### thus, I needed to wrangle different "data sets" to standardise columns, etc.
+### thus, I needed to wrangle different "datasets" to standardise columns, etc.
 
 ## Although the template changed in 15-Jan-2021, I had a (manual) checklist of 
 ## cells to correct util the end of the Summer 2021 trip (23-Jan-2021); 
 ## so, I've done the following steps:
 ##
-## 1 - I filtered up to this trip ('1st data set') and verified the info (see below); 
-## 2 - I did the wrangling on the '2nd data set' (trips after Summer 2021)
+## 1 - I filtered up to Jan-2021 trip ('1st dataset') and verified the info (see below); 
+## 2 - I did the wrangling on the '2nd dataset' (trips after Jan-2021)
 ## *****************************************************************************
 
 ### 1st data set ####
@@ -235,12 +235,13 @@ df2_FarOut <-
                 australasian_gannet, skua, penguin, other_seabird, 
                 count, sb_count, seabird_note, note)
 
-## The 'hour' column from the last LEG of voyage 9 (20/11/2023 to 23/11/2023) -------------#
-# has a different format. So we need to deal with it right now to not have problems later on
+## The 'hour' column from the last leg of voyage 9 (20/11/2023 to 23/11/2023) -------------#
+# and voyage 10 (04/05/2024 to 06/05/2024) has a different format. 
+# So we need to deal with it right now to not have problems later on
 
 # Subset and deal with 'hour' format
-df2_v9_2ndleg <- 
-  df2_FarOut[5539:6026, ] %>% 
+df2_v9_2ndleg_v10 <- 
+  df2_FarOut[5539:6295, ] %>% 
   dplyr::mutate(hour = 
                   stringr::str_sub(
                     as.character(lubridate::parse_date_time(hour, '%I:%M:%S %p'))
@@ -250,9 +251,9 @@ df2_v9_2ndleg <-
 # Subset main dataset and `rbind` back the corrected-format `df2_v9_2ndleg`
 df2_FarOut <- 
   rbind(df2_FarOut[1:5538,],
-        df2_v9_2ndleg)
+        df2_v9_2ndleg_v10)
 
-rm("df2_v9_2ndleg")
+rm("df2_v9_2ndleg_v10")
 ## ---------------------------------------------------------------------------------------#
 
 ## Set up right column classes
@@ -348,17 +349,15 @@ df2_FarOut <-
                 !c(date == "2023-11-23" & hour == "16H 0M 40S"))
 
 ## Modify 
-# Transform to character temporarily
+# (Transform to character temporarily)
 df2_FarOut$home_screen <- as.character(df2_FarOut$home_screen)
 df2_FarOut$hour <- as.character(df2_FarOut$hour)
 
 # Modify a 'Seabird END' that should be 'START'
 df2_FarOut$home_screen[df2_FarOut$date == "2023-01-22" & df2_FarOut$hour == "10H 8M 8S"] <- "Seabird START"
 
-# Modify a 'Seabird START' that should be 'END'
+# Modify 'Seabird START' that should be 'END'
 df2_FarOut$home_screen[df2_FarOut$date == "2023-11-23" & df2_FarOut$hour == "10H 39M 24S"] <- "Seabird END"
-
-# Modify a 'Seabird START' that should be 'END'
 df2_FarOut$home_screen[df2_FarOut$date == "2023-11-23" & df2_FarOut$hour == "14H 23M 36S"] <- "Seabird END"
 
 # *Forgotten 'Seabird END', that was logged a couple of minutes after; 
@@ -371,7 +370,7 @@ df2_FarOut$lon[df2_FarOut$date == "2021-01-15" & df2_FarOut$hour == "19H 45M 2S"
 df2_FarOut$date_time[df2_FarOut$date == "2021-01-15" & df2_FarOut$hour == "19H 45M 2S"] <-
   lubridate::ymd_hms("2021-01-15 19H 45M 2S")
 
-# Back to factor / period
+# (Back to factor / period)
 df2_FarOut$home_screen <- as.factor(df2_FarOut$home_screen)
 df2_FarOut$hour <- lubridate::hms(df2_FarOut$hour)
     ## A few cells fail to parse in `lubridate::hms(df2_FarOut$hour)`, 
@@ -389,49 +388,63 @@ df_input <- data.frame(
                           "2022-11-13", "2022-11-14",
                           "2022-11-14", "2022-11-15",
                           "2023-01-22", "2023-11-15",
-                          "2023-11-16", "2023-11-21")),
+                          "2023-11-16", "2023-11-21",
+                          "2024-05-04", "2024-05-04", "2024-05-04",
+                          "2024-05-05", "2024-05-05")),
   hour = lubridate::hms(c("12H 41M 49S", "13H 17M 13S", 
                           "17H 32M 15S", "10H 05M 33S",
                           "10H 58M 16S", "12H 53M 30S",
                           "13H 45M 45S", "11H 12M 50S",
                           "13H 10M 25S", "7H 37M 56S",
                           "11H 40M 24S", "8H 36M 4S",
-                          "7H 34M 56S", "13H 29M 47S")),
+                          "7H 34M 56S", "13H 29M 47S",
+                          "8H 18M 25S", "13H 14M 26S", "15H 6M 11S",
+                          "14H 21M 16S", "14H 41M 31S")),
   date_time = lubridate::ymd_hms(c("2021-01-15 12H 41M 49S", "2021-01-15 13H 17M 13S", 
                                    "2021-01-15 17H 32M 15S", "2021-01-16 10H 05M 33S",
                                    "2021-01-16 10H 58M 16S", "2021-01-22 12H 53M 30S",
                                    "2022-11-13 13H 45M 45S", "2022-11-14 11H 12M 50S",
                                    "2022-11-14 13H 10M 25S", "2022-11-15 7H 37M 56S",
                                    "2023-01-22 11H 40M 24S", "2023-11-15 8H 36M 4S",
-                                   "2023-11-16 7H 34M 56S", "2023-11-21 13H 29M 47S")),
+                                   "2023-11-16 7H 34M 56S", "2023-11-21 13H 29M 47S",
+                                   "2024-05-04 8H 18M 25S", "2024-05-04 13H 14M 26S", "2024-05-04 15H 6M 11S",
+                                   "2024-05-05 14H 21M 16S", "2024-05-05 14H 41M 31S")),
   lat = as.numeric(c(-34.24153, -34.26678, 
                      -34.43571, -34.25881,
                      -34.31432, -34.90925,
                      -34.42759, -34.46566,
                      -34.32663, -34.34787,
                      -34.40585, -34.63979,
-                     -34.54437, -34.42587)),
+                     -34.54437, -34.42587,
+                     -34.63715, -34.45727, -34.48590,
+                     -34.40364, -34.43157)),
   lon = as.numeric(c(173.3656, 173.35281, 
                      173.2771, 174.10574,
                      174.1179, 175.1355,
                      173.6422, 173.4513,
                      173.5155, 173.1439,
                      173.2921, 173.5695,
-                     173.4244, 173.6320)),
+                     173.4244, 173.6320,
+                     173.5712, 173.5765, 173.5315,
+                     173.3684, 173.3343)),
   home_screen = as.factor(c("Seabird END", "Seabird START", 
                             "Seabird END", "Seabird START",
                             "Seabird END", "Seabird START",
                             "Seabird END", "Seabird START",
                             "Seabird END", "Seabird END",
                             "Seabird START", "Seabird START",
-                            "Seabird START", "Seabird START")),
+                            "Seabird START", "Seabird START",
+                            "Seabird START", "Seabird END", "Seabird END",
+                            "Seabird END", "Seabird END")),
   note = c("forgot to end seabirds", "forgot to start seabird", 
            "forgot to press seabird END", "effort ON - forgot to start seabirds",
            "dolphin sighting - forgot to press seabird END", "forgot to start seabirds, 10mins before the end",
            "nwd - input END by hand", "nwd - input START by hand",
            "nwd - input END by hand", "nwd - input END by hand",
            "nwd - input START by hand", "nwd - input START by hand",
-           "nwd - input START by hand", "nwd - input START by hand")
+           "nwd - input START by hand", "nwd - input START by hand",
+           "nwd - input START by hand", "nwd - input END by hand", "nwd - input END by hand",
+           "nwd - input END by hand", "nwd - input END by hand")
 )
 
 df2_FarOut <- 
@@ -623,34 +636,37 @@ df_FarOut_tidy <-
 # Voyage 7: 2023-01-20 -- 2023-01-24
 # Voyage 8: 2023-05-25 -- 2023-05-26
 # Voyage 9: 2023-11-14 -- 2023-11-25
+# Voyage 10: 2024-05-04 -- 2024-05-06
 
 df_FarOut_tidy <- 
   df_FarOut_tidy %>%
   dplyr::mutate(voyage = dplyr::case_when(
-    date <= "2019-11-17" ~ "voyage1",
-    date >= "2020-01-27" & date <= "2020-02-05" ~ "voyage2",
-    date >= "2021-01-10" & date <= "2021-01-23" ~ "voyage3",
-    date >= "2021-07-14" & date <= "2021-07-15" ~ "voyage4", 
-    date >= "2022-01-18" & date <= "2022-01-26" ~ "voyage5", 
-    date >= "2022-11-12" & date <= "2022-11-20" ~ "voyage6", 
-    date >= "2023-01-20" & date <= "2023-01-24" ~ "voyage7",
-    date >= "2023-05-25" & date <= "2023-05-26" ~ "voyage8", 
-    date >= "2023-11-14" & date <= "2023-11-25" ~ "voyage9"), 
+    date <= "2019-11-17" ~ "01voyage",
+    date >= "2020-01-27" & date <= "2020-02-05" ~ "02voyage",
+    date >= "2021-01-10" & date <= "2021-01-23" ~ "03voyage",
+    date >= "2021-07-14" & date <= "2021-07-15" ~ "04voyage", 
+    date >= "2022-01-18" & date <= "2022-01-26" ~ "05voyage", 
+    date >= "2022-11-12" & date <= "2022-11-20" ~ "06voyage", 
+    date >= "2023-01-20" & date <= "2023-01-24" ~ "07voyage",
+    date >= "2023-05-25" & date <= "2023-05-26" ~ "08voyage", 
+    date >= "2023-11-14" & date <= "2023-11-25" ~ "09voyage",
+    date >= "2024-05-04" & date <= "2024-05-06" ~ "10voyage"), 
     .before = home_screen)
 
 ## Create 'season' col
 df_FarOut_tidy <- 
   df_FarOut_tidy %>%
   dplyr::mutate(season = dplyr::case_when(
-    voyage == "voyage1" ~ "spring",
-    voyage == "voyage2" ~ "summer",
-    voyage == "voyage3" ~ "summer",
-    voyage == "voyage4" ~ "winter",
-    voyage == "voyage5" ~ "summer",
-    voyage == "voyage6" ~ "spring",
-    voyage == "voyage7" ~ "summer",
-    voyage == "voyage8" ~ "winter",
-    voyage == "voyage9" ~ "spring"), 
+    voyage == "01voyage" ~ "spring",
+    voyage == "02voyage" ~ "summer",
+    voyage == "03voyage" ~ "summer",
+    voyage == "04voyage" ~ "winter",
+    voyage == "05voyage" ~ "summer",
+    voyage == "06voyage" ~ "spring",
+    voyage == "07voyage" ~ "summer",
+    voyage == "08voyage" ~ "winter",
+    voyage == "09voyage" ~ "spring",
+    voyage == "10voyage" ~ "autumn"), 
     .before = home_screen)
 
 ## A few more rows need to be deleted, according to notes (see 'tmp' below)
@@ -699,7 +715,7 @@ df_FarOut_tidy <-
 rm("tmp")
 
 ## While running the code above, I've realised a few inconsistencies on how 
-## we named 'unknown' taxa, so let's make it standard
+## we named 'unknown' taxa, so let's standardise them
 
 # levels(df_FarOut_tidy$seabird_sp) # Check lvls
 
@@ -714,8 +730,7 @@ df_FarOut_tidy <-
 
 ## And that we have "Others ..." without any notes, too... (see 'tmp' below)
 ## seabird_sp == "Other" is a "Mollymawk sp" -- will change below.
-## seabird_gr == "Other" with seabird_sp == "Other seabird" without any notes, 
-## don't give us any clue -- so, remove them.
+## seabird_gr == "Other" with seabird_sp == "Other seabird" without any notes, don't give us any clue -- so, remove them.
 
 tmp <- df_FarOut_tidy %>% dplyr::filter(seabird_sp == "Other" | seabird_sp == "Other seabird")
 
