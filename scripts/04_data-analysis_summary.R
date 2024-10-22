@@ -25,7 +25,7 @@ library(patchwork)
 
 ## Read seabird data raw ####
 
-# df_long <- read.csv("./data-processed/df_long.csv") # Just in case
+df_long <- read.csv("./data-processed/df_long.csv") # Just in case
 
 df_wide_groups <- 
   read.csv("./data-processed/df_wide_groups.csv") %>% 
@@ -40,7 +40,7 @@ df_wide_species <-
                                 labels = c("Summer", "Autumn", "Winter", "Spring")))
 
 # Get 'groups' (grps), 'taxa' (spp), and 'species' (sp_only) column mames
-grps_cols <- colnames(df_wide_groups[12:20])
+grps_cols <- colnames(df_wide_groups[12:19])
 spp_cols <- colnames(df_wide_species[12:48]) # All "species" cols
 sp_only_cols <- spp_cols[grepl("_sp$", spp_cols) == FALSE]
 
@@ -80,8 +80,8 @@ effort_summary <-
   dplyr::group_by(season) %>% 
   dplyr::summarise(days_at_sea = n_distinct(date),
                    number_of_voyages = n_distinct(voyage),
-                   km_surveyed = sum(id_dist_km),
-                   # area_surveyed = ?,
+                   km_surveyed = round(sum(id_dist_km), digits = 1),
+                   area_surveyed = round(sum(id_dist_km * 0.2), digits = 1),
                    number_of_10mincounts = n_distinct(id),
                    number_of_species = sum(colSums(across(all_of(sp_only_cols))) > 0),
                    number_of_individuals = sum(across(all_of(spp_cols))))
@@ -153,9 +153,11 @@ df_spp_aggregated <-
   df_wide_species %>% 
   # Group-by and summarise SPP
   dplyr::group_by(voyage, id_transect) %>% 
-  dplyr::summarise(across(all_of(sp_only_cols), sum)) %>% 
+  dplyr::summarise(across(all_of(c("id_dist_km", sp_only_cols)), sum)) %>% 
   # Calculate total_birds counted within each grid, and the species richness
   dplyr::mutate(total_birds = rowSums(across(all_of(sp_only_cols))),
+                # density_birds = total birds / area surveyed
+                density_birds = round((rowSums(across(all_of(sp_only_cols))) / sum(id_dist_km * 0.2)), digits = 3),
                 sp_richness = rowSums(across(all_of(sp_only_cols), ~ . != 0) == TRUE),
                 season = dplyr::case_when(
                   voyage == "01voyage" ~ "spring",
@@ -188,7 +190,7 @@ violin_transect_sprich_season <-
         axis.title = element_text(size = 10),
         axis.text = element_text(size = 9))
   
-violin_transect_nbirds_season<-
+violin_transect_nbirds_season <-
   ggplot(data = df_spp_aggregated,
          aes(x = season, y = total_birds, fill = season)) +
   geom_violin(alpha = 0.8) +
@@ -201,16 +203,42 @@ violin_transect_nbirds_season<-
         axis.title = element_text(size = 10),
         axis.text = element_text(size = 9))
 
-violin_transect_sprich_nbirds_season <- 
-  violin_transect_sprich_season / violin_transect_nbirds_season + 
-  patchwork::plot_annotation(tag_levels = 'A')
+violin_transect_density_season <-
+  ggplot(data = df_spp_aggregated,
+         aes(x = season, y = density_birds, fill = season)) +
+  geom_violin(alpha = 0.8) +
+  scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                               "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  xlab("") + ylab("Density (birds/km²)") +
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 9))
+
+# violin_transect_sprich_nbirds_season <- 
+#   violin_transect_sprich_season / violin_transect_nbirds_season + 
+#   patchwork::plot_annotation(tag_levels = 'A')
 
 # ggsave(violin_transect_sprich_nbirds_season,
 #        filename = "./results/violin_season_sprich-nbirds-by-transect.pdf",
 #        height = 13, width = 10, units = "cm", dpi = 300)
 
-rm("violin_transect_sprich_season", "violin_transect_nbirds_season",
-   "violin_transect_sprich_nbirds_season")
+violin_transect_sprich_nbirds_density_season <- 
+  violin_transect_sprich_season / 
+  violin_transect_nbirds_season / 
+  violin_transect_density_season + 
+  patchwork::plot_annotation(tag_levels = 'A')
+
+ggsave(violin_transect_sprich_nbirds_density_season,
+       filename = "./results/violin_season_sprich-nbirds-density-by-transect.pdf",
+       height = 16, width = 10, units = "cm", dpi = 300)
+
+rm("violin_transect_sprich_season", 
+   "violin_transect_nbirds_season",
+   "violin_transect_density_season",
+   "violin_transect_sprich_nbirds_season", 
+   "violin_transect_sprich_nbirds_density_season",
+   "df_spp_aggregated")
 
 ### Groups/species number of individuals, lat/lon, by season ####
 
@@ -235,7 +263,8 @@ data_groups_by_season <-
     grps == "mollymawk" ~ "Albatross",
     grps == "gull" ~ "Gull",
     grps == "prion" ~ "Prion"
-  ))
+  )) %>% 
+  dplyr::filter(! grps == "Gull")
 
 # Species
 data_species_by_season <-
@@ -279,106 +308,30 @@ data_species_by_season <-
 map_grp_by_season_facetgrid <-
   nz_base_map_simplified +
   ## Bubbles
-  geom_point(data = data_groups_by_season[data_groups_by_season$zero_non_zero == "non_zero", ],
+  geom_point(data = data_groups_by_season,
              aes(x = lon, y = lat,
                  size = grps_count, 
                  shape = zero_non_zero, 
                  fill = season),
              alpha = 0.5) +
-  scale_shape_manual(values = c("non_zero" = 21)) +
+  scale_shape_manual(values = c("non_zero" = 21, "zero" = 4)) +
   scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
-  scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Seabird numbers") +
+  scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Number of seabirds") +
   facet_grid(cols = vars(season), rows = vars(grps)) +
   guides(colour = "none", shape = "none", fill = "none") +
   xlab("") + ylab("") +
   theme_bw() + 
-  theme(strip.text = element_text(size = 8),
-        axis.text = element_text(size = 7))
-
-## It would be good to add zeroes... ---------------------------------------- ##
-
-## Still not what I want... 
-
-# map_grp_by_season_facetgrid <-
-#   nz_base_map +
-#   geom_point(data = data_groups_by_season,
-#              aes(x = lon,
-#                  y = lat,
-#                  size = grps_count,
-#                  shape = zero_non_zero,
-#                  fill = season),
-#              alpha = 0.6) +
-#   scale_shape_manual(values = c("zero" = 4, "non_zero" = 21)) +
-#   # scale_color_manual(values = c("summer" = "#E69F00", "winter" = "#56B4E9", "spring" = "grey50")) +
-#   scale_fill_manual(values = c("summer" = "#E69F00", "winter" = "#56B4E9", "spring" = "grey50")) +
-#   scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Seabird numbers") +
-#   facet_grid(cols = vars(season), rows = vars(grps)) +
-#   guides(colour = "none", shape = "none") +
-#   xlab("") + ylab("") +
-#   theme_bw() + 
-#   theme(strip.text = element_text(size = 8),
-#         axis.text = element_text(size = 7))
+  theme(strip.text = element_text(size = 8), 
+        axis.text = element_text(size = 7),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 
 ggsave(map_grp_by_season_facetgrid,
        filename = "./results/EDA/map_grps_by_season.pdf",
-       height = 35, width = 25, units = "cm")
+       height = 27, width = 23, units = "cm")
 
-rm("map_grp_by_season_facetgrid")
-
-# -------------------------------------------------------------------------------------------- #
-## Below, there are group-by-group maps -- I've ran it once and commented it as we might not use
-
-# map_grps_by_season_list <- list()
-# 
-# # Update vector
-# grps_cols <- unique(data_groups_by_season$grps)
-# 
-# for (grp in grps_cols) {
-# 
-#   name <- as.character(grp)
-# 
-#   # Subset data.frame
-#   data_groups_by_season_subset <-
-#     data_groups_by_season %>% dplyr::filter(grps == name)
-# 
-#   # Plot
-#   map_grp_by_season <-
-#     nz_base_map +
-#     geom_point(data = data_groups_by_season_subset,
-#                aes(x = lon,
-#                    y = lat,
-#                    size = grps_count,
-#                    shape = zero_non_zero,
-#                    color = season),
-#                alpha = 0.5) +
-#     scale_shape_manual(values = c("zero" = 4, "non_zero" = 16)) +
-#     scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
-#                                   "Winter" = "#E15759", "Spring" = "#76B7B2")) +
-#     scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Seabird numbers") +
-#     facet_wrap(~ season) +
-#     guides(colour = "none", shape = "none") +
-#     xlab("") + ylab("") +
-#     ggtitle(label = name) +
-#     theme_bw() +
-#     theme(strip.text = element_text(size = 8),
-#           axis.text = element_text(size = 7))
-# 
-#   # Save it
-#   map_grps_by_season_list[[name]] <- map_grp_by_season
-# 
-#   rm("grp", "name", "data_groups_by_season_subset", "map_grp_by_season")
-# }
-# 
-# ## Test
-# # map_grps_by_season_list[["shearwater"]] # --- OK
-# 
-# ## Save and clean obj from environment
-# saveRDS(map_grps_by_season_list,
-#         file = "./results/EDA/list_maps_grps_by_season.rds")
-# 
-# rm("map_grps_by_season_list")
-# gc()
+rm("map_grp_by_season_facetgrid",
+   "data_groups_by_season")
 
 #### (ii) Species - Violin plot ####
 
@@ -391,16 +344,16 @@ violin_species_by_season <-
   scale_fill_manual(values=c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                              "Winter" = "#E15759", "Spring" = "#76B7B2")) +
   facet_wrap(~ season, ncol = 4, scales = "fixed") + 
-  ylab("") + xlab("log(Number of individuals per 10 min count)") +
+  ylab("") + xlab("log(Number of individuals per 10-min count)") +
   theme_bw() + 
   theme(legend.position = "none",
-        axis.text = element_text(size = 10, colour = "black"),
-        axis.title = element_text(size = 10),
-        strip.text = element_text(size = 10))
+        axis.text = element_text(size = 9, colour = "black"),
+        axis.title = element_text(size = 9),
+        strip.text = element_text(size = 9))
 
 # ggsave(violin_species_by_season,
 #        filename = "./results/EDA/violin_log-number-individuals_species-by-season.pdf",
-#        height = 15, width = 15, units = "cm", dpi = 300)
+#        height = 15, width = 16, units = "cm", dpi = 300)
 
 rm("violin_species_by_season")
 
@@ -408,7 +361,9 @@ rm("violin_species_by_season")
 
 map_species_by_season_list <- list()
 
-for (sp in sp_only_cols) {
+sp_only_cols_nicename <- unique(data_species_by_season$spp)
+
+for (sp in sp_only_cols_nicename) {
   
   name <- as.character(sp)
 
@@ -418,24 +373,24 @@ for (sp in sp_only_cols) {
 
   # Plot
   map_species_by_season <-
-    nz_base_map +
+    nz_base_map_simplified +
     geom_point(data = data_species_by_season_subset,
-               aes(x = lon,
-                   y = lat,
-                   size = spp_count,
-                   shape = zero_non_zero,
-                   color = season),
+               aes(x = lon, y = lat,
+                   size = spp_count, 
+                   shape = zero_non_zero, 
+                   fill = season),
                alpha = 0.5) +
-    scale_shape_manual(values = c("zero" = 4, "non_zero" = 16)) +
-    scale_color_manual(values = c("summer" = "#4E79A7", "autumn" = "#F28E2B", 
-                                  "winter" = "#E15759", "spring" = "#76B7B2")) +
-    scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Seabird numbers") +
-    facet_wrap(~ season) +
-    guides(colour = "none", shape = "none") +
+    scale_shape_manual(values = c("non_zero" = 21, "zero" = 4)) +
+    scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                 "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+    scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Number of seabirds") +
+    facet_grid(cols = vars(season), rows = vars(spp)) +
+    guides(colour = "none", shape = "none", fill = "none") +
     xlab("") + ylab("") +
     theme_bw() + 
-    theme(strip.text = element_text(size = 8),
-          axis.text = element_text(size = 7))
+    theme(strip.text = element_text(size = 8), 
+          axis.text = element_text(size = 7),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 
   # Save it
   map_species_by_season_list[[name]] <- map_species_by_season
@@ -444,15 +399,16 @@ for (sp in sp_only_cols) {
 }
 
 ## Test
-# map_species_by_season_list[["black_petrel"]]
-# map_species_by_season_list[["bullers_shearwater"]]
-# map_species_by_season_list[["grey_faced_petrel_oi"]]
+# map_species_by_season_list[["Black petrel"]]
+# map_species_by_season_list[["Buller's shearwater"]]
+# map_species_by_season_list[["Grey-faced petrel"]]
 
 saveRDS(map_species_by_season_list,
         file = "./results/EDA/list_maps_species_by_season.rds")
 
-rm("map_species_by_season_list")
-gc()
+rm("map_species_by_season_list",
+   "data_species_by_season")
+# gc()
 
 ### Species Frequency of occurrence and Relative abundance ####
 
@@ -506,6 +462,10 @@ data_species_fo_nf <-
 
 rm("funs")
 
+# write.csv(data_species_fo_nf,
+#           file = "./results/species_frqs-occ-num_season.csv",
+#           row.names = FALSE)
+
 #### (i) FO/NF plots ####
 
 ## Frequency of occurrence
@@ -549,8 +509,89 @@ freqs_occ_num <-
   plot_freq_occ / plot_freq_num + 
   patchwork::plot_annotation(tag_levels = 'A')
 
-ggsave(freqs_occ_num,
-       filename = "./results/species_frqs-occ-num.pdf",
-       width = 16, height = 25, units = "cm", dpi = 300)
+# ggsave(freqs_occ_num,
+#        filename = "./results/species_frqs-occ-num.pdf",
+#        width = 16, height = 25, units = "cm", dpi = 300)
 
 rm("plot_freq_occ", "plot_freq_num", "freqs_occ_num", "data_species_fo_nf")
+
+### Groups/species biomass, by season ####
+
+df_biomass <- 
+  df_long %>% 
+  dplyr::filter(!is.na(species_mass_kg)) %>% 
+  dplyr::mutate(biomass = seabird_ct * species_mass_kg)
+
+## Groups --
+df_gr_biomass <- 
+  df_biomass %>% 
+  dplyr::group_by(season, seabird_gr) %>% 
+  dplyr::summarise(biomass_gr = sum(biomass))
+
+df_gr_biomass$season <- factor(df_gr_biomass$season,
+                               levels = c("summer", "autumn", "winter", "spring"),
+                               labels = c("Summer", "Autumn", "Winter", "Spring"))
+
+biomass_gr_plot <-
+  ggplot(df_gr_biomass, 
+         aes(x = season, y = biomass_gr, fill = seabird_gr)) +
+  geom_bar(position = "fill", stat = "identity") + 
+  scale_fill_brewer(palette = "Dark2", name = NULL) + 
+  scale_y_continuous(labels = c("0%", "25%", "50%", "75%", "100%")) + 
+  xlab("") + ylab("% Total biomass") + 
+  theme_bw() + 
+  theme(axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 9, colour = "black"),
+        axis.text.x = element_text(size = 11, colour = "black"))
+
+# ggsave(biomass_gr_plot,
+#        filename = "./results/biomass-per-group.pdf",
+#        width = 18, height = 12, units = "cm", dpi = 300)
+
+## Species --
+df_sp_biomass <- 
+  df_biomass %>% 
+  dplyr::group_by(season, seabird_sp) %>% 
+  dplyr::summarise(biomass_sp = sum(biomass))
+
+df_sp_biomass <-
+  df_sp_biomass %>% 
+  dplyr::mutate(seabird_sp = dplyr::case_when(
+    seabird_sp == "Grey-faced petrel (Oi)" ~ "Grey-faced petrel",
+    seabird_sp == "Fluttering/Hutton's shearwater" ~ "Fluttering shearwater",
+    .default = as.character(seabird_sp)
+  ))
+
+df_sp_biomass$season <- factor(df_sp_biomass$season,
+                               levels = c("summer", "autumn", "winter", "spring"),
+                               labels = c("Summer", "Autumn", "Winter", "Spring"))
+
+# pal_26cols <- colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(26)
+
+pal_26cols <- colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(26)
+
+biomass_sp_plot <-
+  ggplot(df_sp_biomass, 
+         aes(x = season, y = biomass_sp, fill = seabird_sp)) +
+  geom_bar(position = "fill", stat = "identity") + 
+  # scale_fill_brewer(palette = "Dark2", name = NULL) + 
+  scale_fill_manual(values = pal_26cols, name = NULL) +
+  scale_y_continuous(labels = c("0%", "25%", "50%", "75%", "100%")) + 
+  xlab("") + ylab("% Total biomass") + 
+  theme_bw() + 
+  theme(axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 9, colour = "black"),
+        axis.text.x = element_text(size = 11, colour = "black"))
+
+# ggsave(biomass_sp_plot,
+#        filename = "./results/biomass-per-species.pdf",
+#        width = 22, height = 12, units = "cm", dpi = 300)
+
+biomass_plot <-
+  biomass_gr_plot / 
+  biomass_sp_plot + 
+  patchwork::plot_annotation(tag_levels = 'A')
+
+ggsave(biomass_plot,
+       filename = "./results/biomass-patchwork.pdf",
+       width = 22, height = 20, units = "cm", dpi = 300)

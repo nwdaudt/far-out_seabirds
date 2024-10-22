@@ -24,7 +24,7 @@ library(iNEXT)
 ## Read seabird data raw ####
 
 df_wide_species <- 
-  read.csv("./data-processed/df_wide_species_chl.csv") %>% 
+  read.csv("./data-processed/df_wide_species_chl_sst.csv") %>% 
   dplyr::mutate(season = factor(season, 
                                 levels = c("summer", "autumn", 
                                            "winter", "spring"),
@@ -33,7 +33,7 @@ df_wide_species <-
 
 ## Get 'taxa' (spp_) and 'species' (sp_only) column names
 
-spp_cols <- colnames(df_wide_species[12:48]) # All "species" cols
+spp_cols <- colnames(df_wide_species[12:49]) # All "species" cols
 sp_only_cols <- spp_cols[grepl("_sp$", spp_cols) == FALSE]
 
 ## Quick one -- any groups that sum zero? (i.e. zero counts) ---------------- ##
@@ -84,15 +84,18 @@ df_spp_aggregated <-
                                            "Winter", "Spring"))) %>% 
   dplyr::ungroup(.)
 
-df_chl_aggregated <-
+df_environ_aggregated <-
   df_wide_species %>% 
-  # Group-by and summarise CHL
+  # Group-by and summarise CHL and SST
   dplyr::group_by(voyage, id_transect) %>% 
-  dplyr::summarise(chl_a = mean(chl_a, na.rm = TRUE))
+  dplyr::summarise(chl_a = mean(chl_a, na.rm = TRUE),
+                   sst = mean(sst, na.rm = TRUE))
 
-df_spp_aggregated <- cbind(df_spp_aggregated, chl_a = df_chl_aggregated$chl_a)
+df_spp_aggregated <- cbind(df_spp_aggregated, 
+                           chl_a = df_environ_aggregated$chl_a,
+                           sst = df_environ_aggregated$sst)
 
-rm("df_chl_aggregated")
+rm("df_environ_aggregated")
 
 ## Prep for modelling ####
 
@@ -153,11 +156,11 @@ gllvm_null_lv1 <-
 BIC(gllvm_null_lv3, gllvm_null_lv2, gllvm_null_lv1)
 
 #                df      BIC
-# gllvm_null_lv3 97 4282.522
-# gllvm_null_lv2 79 4200.364
-# gllvm_null_lv1 60 4139.632 ## <--- Best model
+# gllvm_null_lv3 97 4301.868
+# gllvm_null_lv2 79 4217.886
+# gllvm_null_lv1 60 4156.611 ## <--- Best model
 
-## Residuals -- look great
+## Residuals -- looks great
 # pdf(file = "./results/gllvm_null_lv1_residuals.pdf")
 # plot(gllvm_null_lv1, which = 1:4, mfrow = c(2,2))
 # dev.off()
@@ -168,7 +171,7 @@ rm("gllvm_null_lv3", "gllvm_null_lv2")
 
 ## Get LV values and arrange it in a dataframe to plot
 df_plot_null_model <-
-  cbind((df_spp_aggregated %>% dplyr::select(season, chl_a)),
+  cbind((df_spp_aggregated %>% dplyr::select(season, chl_a, sst)),
         as.data.frame(gllvm::getLV.gllvm(gllvm_null_lv1)))
 
 ## Plots
@@ -209,7 +212,7 @@ plot_gllvm_null_chl <-
              color = chl_a)) +
   geom_point(alpha = 0.6, size = 3) +
   scale_color_gradient(low = "lightgreen", high = "darkgreen", 
-                       name = "Chlorophyll-a concentration [mg m^-3]") + 
+                       name = "Chlorophyll-a concentration [mg/m³]") + 
   xlab("Latent Variable 1") + ylab("") +
   facet_wrap(~ season, scales = "free") +
   theme_bw() +
@@ -223,7 +226,31 @@ plot_gllvm_null_chl <-
 #        filename = "./results/gllvm_null_lv1_biplot_facet-season-chl.pdf",
 #        height = 12, width = 14, units = "cm", dpi = 300)
 
-rm("df_plot_null_model", "plot_gllvm_null_season", "plot_gllvm_null_chl")
+## Colour-code by SST
+plot_gllvm_null_sst <-
+  ggplot(data = df_plot_null_model,
+         aes(x = V1,
+             y = rep(0, times = nrow(df_plot_null_model)),
+             color = sst)) +
+  geom_point(alpha = 0.6, size = 3) +
+  scale_color_gradient(low = "yellow2", high = "tomato3", 
+                       name = "Sea surface temperature") + 
+  xlab("Latent Variable 1") + ylab("") +
+  facet_wrap(~ season, scales = "free") +
+  theme_bw() +
+  theme(axis.title.x = element_text(size = 10),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.position = "bottom")
+
+# ggsave(plot_gllvm_null_sst,
+#        filename = "./results/gllvm_null_lv1_biplot_facet-season-sst.pdf",
+#        height = 12, width = 14, units = "cm", dpi = 300)
+
+rm("df_plot_null_model", 
+   "plot_gllvm_null_season", "plot_gllvm_null_chl", "plot_gllvm_null_sst")
 
 ### Save the model object in case needed later ------------------------------ ##
 
@@ -246,6 +273,18 @@ saveRDS(gllvm_null_lv1,
 ## therefore we have to remove it to run the model.
 
 ### LV == 1
+gllvm_pred_lv1_season.chl.sst <-
+  gllvm::gllvm(y = spp_matrix[-33,], 
+               X = data.frame(season = df_spp_aggregated$season[-33],
+                              chl_a = df_spp_aggregated$chl_a[-33],
+                              sst = df_spp_aggregated$sst[-33],
+                              voyage = df_spp_aggregated$voyage[-33]),
+               formula = ~ season + chl_a + sst,
+               num.lv = 1,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
 gllvm_pred_lv1_season.chl <-
   gllvm::gllvm(y = spp_matrix[-33,], 
                X = data.frame(season = df_spp_aggregated$season[-33],
@@ -257,10 +296,20 @@ gllvm_pred_lv1_season.chl <-
                row.eff = ~(1|voyage),
                seed = 1234)
 
+gllvm_pred_lv1_season.sst <-
+  gllvm::gllvm(y = spp_matrix[-33,], 
+               X = data.frame(season = df_spp_aggregated$season[-33],
+                              sst = df_spp_aggregated$sst[-33],
+                              voyage = df_spp_aggregated$voyage[-33]),
+               formula = ~ season + sst,
+               num.lv = 1,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
 gllvm_pred_lv1_season <-
   gllvm::gllvm(y = spp_matrix[-33,], 
                X = data.frame(season = df_spp_aggregated$season[-33],
-                              chl_a = df_spp_aggregated$chl_a[-33],
                               voyage = df_spp_aggregated$voyage[-33]),
                formula = ~ season,
                num.lv = 1,
@@ -270,8 +319,7 @@ gllvm_pred_lv1_season <-
 
 gllvm_pred_lv1_chl <-
   gllvm::gllvm(y = spp_matrix[-33,], 
-               X = data.frame(season = df_spp_aggregated$season[-33],
-                              chl_a = df_spp_aggregated$chl_a[-33],
+               X = data.frame(chl_a = df_spp_aggregated$chl_a[-33],
                               voyage = df_spp_aggregated$voyage[-33]),
                formula = ~ chl_a,
                num.lv = 1,
@@ -279,7 +327,29 @@ gllvm_pred_lv1_chl <-
                row.eff = ~(1|voyage),
                seed = 1234)
 
-###LV == 0
+gllvm_pred_lv1_sst <-
+  gllvm::gllvm(y = spp_matrix[-33,], 
+               X = data.frame(sst = df_spp_aggregated$sst[-33],
+                              voyage = df_spp_aggregated$voyage[-33]),
+               formula = ~ sst,
+               num.lv = 1,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
+### LV == 0
+gllvm_pred_lv0_season.chl.sst <-
+  gllvm::gllvm(y = spp_matrix[-33,], 
+               X = data.frame(season = df_spp_aggregated$season[-33],
+                              chl_a = df_spp_aggregated$chl_a[-33],
+                              sst = df_spp_aggregated$sst[-33],
+                              voyage = df_spp_aggregated$voyage[-33]),
+               formula = ~ season + chl_a + sst,
+               num.lv = 0,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
 gllvm_pred_lv0_season.chl <-
   gllvm::gllvm(y = spp_matrix[-33,], 
                X = data.frame(season = df_spp_aggregated$season[-33],
@@ -291,10 +361,20 @@ gllvm_pred_lv0_season.chl <-
                row.eff = ~(1|voyage),
                seed = 1234)
 
+gllvm_pred_lv0_season.sst <-
+  gllvm::gllvm(y = spp_matrix[-33,], 
+               X = data.frame(season = df_spp_aggregated$season[-33],
+                              sst = df_spp_aggregated$sst[-33],
+                              voyage = df_spp_aggregated$voyage[-33]),
+               formula = ~ season + sst,
+               num.lv = 0,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
 gllvm_pred_lv0_season <-
   gllvm::gllvm(y = spp_matrix[-33,], 
                X = data.frame(season = df_spp_aggregated$season[-33],
-                              chl_a = df_spp_aggregated$chl_a[-33],
                               voyage = df_spp_aggregated$voyage[-33]),
                formula = ~ season,
                num.lv = 0,
@@ -304,8 +384,7 @@ gllvm_pred_lv0_season <-
 
 gllvm_pred_lv0_chl <-
   gllvm::gllvm(y = spp_matrix[-33,], 
-               X = data.frame(season = df_spp_aggregated$season[-33],
-                              chl_a = df_spp_aggregated$chl_a[-33],
+               X = data.frame(chl_a = df_spp_aggregated$chl_a[-33],
                               voyage = df_spp_aggregated$voyage[-33]),
                formula = ~ chl_a,
                num.lv = 0,
@@ -313,29 +392,59 @@ gllvm_pred_lv0_chl <-
                row.eff = ~(1|voyage),
                seed = 1234)
 
-BIC(gllvm_pred_lv1_season.chl,
+gllvm_pred_lv0_sst <-
+  gllvm::gllvm(y = spp_matrix[-33,], 
+               X = data.frame(sst = df_spp_aggregated$sst[-33],
+                              voyage = df_spp_aggregated$voyage[-33]),
+               formula = ~ sst,
+               num.lv = 0,
+               family = "negative.binomial",
+               row.eff = ~(1|voyage),
+               seed = 1234)
+
+BIC(gllvm_pred_lv1_season.chl.sst,
+    gllvm_pred_lv1_season.chl,
+    gllvm_pred_lv1_season.sst,
     gllvm_pred_lv1_season,
     gllvm_pred_lv1_chl,
+    gllvm_pred_lv1_sst,
+    gllvm_pred_lv0_season.chl.sst,
     gllvm_pred_lv0_season.chl,
+    gllvm_pred_lv0_season.sst,
     gllvm_pred_lv0_season,
-    gllvm_pred_lv0_chl)
+    gllvm_pred_lv0_chl,
+    gllvm_pred_lv0_sst)
 
-#                            df      BIC
-# gllvm_pred_lv1_season.chl 141 4026.795
-# gllvm_pred_lv1_season     121 3993.811
-# gllvm_pred_lv1_chl         81 4114.641
-# gllvm_pred_lv0_season.chl 121 3935.717
-# gllvm_pred_lv0_season     101 3902.735 ## <--- Best model
-# gllvm_pred_lv0_chl         61 4105.945
+#                                df       BIC
+# gllvm_pred_lv1_season.chl.sst 161   4080.798
+# gllvm_pred_lv1_season.chl     141   4035.291
+# gllvm_pred_lv1_season.sst     141   4053.940
+# gllvm_pred_lv1_season         121   4003.743
+# gllvm_pred_lv1_chl             81   4128.918
+# gllvm_pred_lv1_sst             81   4024.575
+# gllvm_pred_lv0_season.chl.sst 141   3989.721
+# gllvm_pred_lv0_season.chl     121   3945.677
+# gllvm_pred_lv0_season.sst     121   3962.863
+# gllvm_pred_lv0_season         101   3912.667     ### <--- Best model
+# gllvm_pred_lv0_chl             61 -1.924824e+178  ## Clearly something went wrong here
+# gllvm_pred_lv0_sst             61   3933.497
 
 ## Residuals -- look great
 # pdf(file = "./results/gllvm_pred_lv0_season_residuals.pdf")
 # plot(gllvm_pred_lv0_season, which = 1:4, mfrow = c(2,2))
 # dev.off()
 
-rm("gllvm_pred_lv1_season.chl", 
-   #"gllvm_pred_lv1_season",
-   "gllvm_pred_lv1_chl", "gllvm_pred_lv0_season.chl", "gllvm_pred_lv0_chl")
+rm("gllvm_pred_lv1_season.chl.sst",
+   "gllvm_pred_lv1_season.chl",
+   "gllvm_pred_lv1_season.sst",
+   # gllvm_pred_lv1_season,
+   "gllvm_pred_lv1_chl",
+   "gllvm_pred_lv1_sst",
+   "gllvm_pred_lv0_season.chl.sst",
+   "gllvm_pred_lv0_season.chl",
+   "gllvm_pred_lv0_season.sst",
+   "gllvm_pred_lv0_chl",
+   "gllvm_pred_lv0_sst")
 
 ### Save the model object in case needed later ------------------------------ ##
 
@@ -440,8 +549,8 @@ par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 # in the data was explained by the predictor (season) and therefore there is no
 # need for including a latent variable.
 #
-# Thus, on purpose, for the next plot I used the model with ONE latent variable 
-# plus the same retained predictor (season) as the best selected model. 
+# Thus, **on purpose**, for the next plot I used the model with ONE latent variable 
+# plus the same best predictor (season), such as the best selected model. 
 # By doing so, it allowed to get the residual species-correlation matrix and running the plot.
 # 
 # Not surprisingly, and reinforcing no need for latent variables, you will see
@@ -481,10 +590,10 @@ par(mfrow = c(1, 1))
 # residuals_cov_pred_lv1_season <- gllvm::getResidualCov(gllvm_pred_lv1_season)
 # 
 # (1 - residuals_cov_pred_lv1_season$trace / residuals_cov_null$trace) * 100
-# ## >> 37.7258
+# ## >> 37.32462
 
 ## Note, however, that again I used the 'gllvm_pred_lv1_season' model which includes
-## one latent variable. This calculations can get tricky with latent variables, so this
+## one latent variable. This calculations can get tricky with latent variables, so these
 ## numbers are not to trust blindly. Nonetheless, it suggests ~40% of the variability
 ## in the data was explained by season alone -- which is very high value for a single predictor.
 
@@ -622,8 +731,8 @@ inext_plot <-
   curve_sample_size_based + curve_coverage_based + 
   patchwork::plot_annotation(tag_levels = 'A')
 
-# ggsave(inext_plot, 
-#        filename = "./results/iNEXT.pdf", 
+# ggsave(inext_plot,
+#        filename = "./results/iNEXT.pdf",
 #        height = 8, width = 16, units = "cm", dpi = 300)
 
 rm("df_inext", "list_inext", "inext_obj", 

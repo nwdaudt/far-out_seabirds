@@ -248,7 +248,7 @@ df2_v9_2ndleg_v10 <-
                     , start = 9), 
                 .after = date)
 
-# Subset main dataset and `rbind` back the corrected-format `df2_v9_2ndleg`
+# Subset main dataset and `rbind` back the corrected-format `df2_v9_2ndleg_v10`
 df2_FarOut <- 
   rbind(df2_FarOut[1:5538,],
         df2_v9_2ndleg_v10)
@@ -728,7 +728,7 @@ df_FarOut_tidy <-
                                     "Unidentified petrel" ~ "Petrel sp",
                                     .default = seabird_sp)))
 
-## And that we have "Others ..." without any notes, too... (see 'tmp' below)
+## ...and that we have "Others ..." without any notes, too... (see 'tmp' below)
 ## seabird_sp == "Other" is a "Mollymawk sp" -- will change below.
 ## seabird_gr == "Other" with seabird_sp == "Other seabird" without any notes, don't give us any clue -- so, remove them.
 
@@ -744,6 +744,64 @@ df_FarOut_tidy <-
   droplevels(.)
 
 rm("tmp")
+
+## Lastly, let's call mollymawks as albatrosses in 'seabird_gr'
+
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>% 
+  dplyr::mutate(seabird_gr = ifelse(seabird_gr == "Mollymawk",
+                                    yes = "Albatross", no = as.character(seabird_gr)))
+
+## ... and change (fix!) "Grey petrel" to "Grey-faced petrel (Oi)" -- the former was wrongly specified in the field, and checked later
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>% 
+  dplyr::mutate(seabird_sp = ifelse(seabird_sp == "Grey petrel",
+                                    yes = "Grey-faced petrel (Oi)", no = as.character(seabird_sp)))
+
+### Add species mass to calculate biomass ####
+
+# unique(df_FarOut_tidy$seabird_sp)
+
+## Species mass according to
+# H.A. Robertson & B.D. Heather (2015) The hand guide to the birds of New Zealand. Penguin Random House New Zealand
+
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>% 
+  dplyr::mutate(species_mass_kg = dplyr::case_when(
+    seabird_sp == "Buller's shearwater" ~ 0.425,
+    seabird_sp == "Fluttering/Hutton's shearwater" ~ 0.325, # Average between species
+    seabird_sp == "Flesh-footed shearwater" ~ 0.6,
+    seabird_sp == "Sooty shearwater" ~ 0.8,
+    seabird_sp == "Grey-faced petrel (Oi)" ~ 0.55,
+    seabird_sp == "White-chinned petrel" ~ 1.25,
+    seabird_sp == "Cook/Pycroft petrel" ~ 0.175, # Average between species
+    seabird_sp == "Northern giant petrel" ~ 4.5,
+    seabird_sp == "Black petrel" ~ 0.7,
+    seabird_sp == "Wandering albatross" ~ 6.5,
+    seabird_sp == "Wilson's storm petrel" ~ 0.035,
+    seabird_sp == "Black-winged petrel" ~ 0.175,
+    seabird_sp == "Australasian gannet" ~ 2.3,
+    seabird_sp == "Campbell albatross" ~ 3,
+    seabird_sp == "Little shearwater" ~ 0.24,
+    seabird_sp == "White-faced storm petrel" ~ 0.045,
+    seabird_sp == "Black-bellied storm petrel" ~ 0.055,
+    seabird_sp == "Northern royal albatross" ~ 9,
+    seabird_sp == "White-bellied storm petrel" ~ 0.05,
+    seabird_sp == "Red-billed gull" ~ 0.28, # Average between sexes
+    seabird_sp == "Black-billed gull" ~ 0.275, # Average between sexes
+    seabird_sp == "Diving petrel" ~ 0.13,
+    seabird_sp == "NZ storm petrel" ~ 0.033,
+    seabird_sp == "Arctic skua" ~ 0.4,
+    seabird_sp == "White-capped albatross" ~ 4,
+    seabird_sp == "Cape pigeon" ~ 0.45,
+    seabird_sp == "Black-browed albatross" ~ 3.5,
+    seabird_sp == "Fairy prion" ~ 0.125,
+    seabird_sp == "Southern royal albatross" ~ 9,
+    seabird_sp == "Buller's albatross" ~ 3,
+    seabird_sp == "White-necked petrel" ~ 0.45,
+    seabird_sp == "Brown skua" ~ 1.812, # Average between sexes
+    .default = NA
+  ), .after = seabird_ct)
 
 ### Save it: Long format ####
 
