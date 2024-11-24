@@ -1,50 +1,51 @@
-# Seasonality drives assemblages of seabird species off northeast Aotearoa New Zealand
+# Seasonality rather than oceanography drives assemblages of seabird species off northeast Aotearoa New Zealand
 
 **This is a work in progress. The README and files will be constantly being updated.**
 
-In this study, we use a mix of descriptive statistics, diversity curves, and model-based multivariate statistics to describe assemblages of seabird species off Northland, northeast Aotearoa New Zealand.
+In this study, we used a mix of descriptive spatial and summary analyses, diversity curves and model-based multivariate statistics to describe assemblages of seabird species off Northland, northeast Aotearoa New Zealand.
 
-Data were collected with the [Far Out Ocean Research Collective](https://www.farout.org.nz/). The fieldwork of this study is in the rohe (territory) of the Māori iwi (tribe) Ngāti Kuri, who shares the custody of the data. The raw data (probably) won't be open access; however, we hope to make some data available eventually.
+Data were collected with the [Far Out Ocean Research Collective](https://www.farout.org.nz/). The fieldwork of this study was in the rohe moana (territory) of the Māori iwi (tribe) Ngāti Kuri, who shares the custody of the data. Following the CARE principles and the wish from Ngāti Kuri to not release any data from their territory, the raw data won't be open access. However, we hope to make some data available eventually (likely the 'aggregated' data for multivariate analysis).
+
+The processing of the data and analyses code is, however, all available in this repository for transparency.
 
 ***
 
 ## Project structure
 
-Workspace is set as follows: **(Work in progress...)**
+Workspace is set as shown below. All folders in [square brackets] are not tracked with `git`
 
 ```shell
 far-out_seabirds
 ├── README.md
 ├── [./data-raw] ** untracked folder containing raw data
-│   ├── 
-│   └── 
-├── ./data-processed
-│   ├── [./raw-tidy] ** untracked folder containing tidy 'raw' data
-│   ├── 
-│   ├── 
-│   └── 
-├── ./data-spatial
-│   ├── [./environmental-data] ** untracked folder containing CHL .nc files
-│   ├── ./nz
-│   └── ./transects
+├── [./data-processed] ** untracked folder containing tidy data
+├── [./data-spatial] ** untracked folder containing spatial data
+│   ├── [./environmental-data] 
+│   │   ├── [./chl]
+│   │   └── [./sst]
+│   ├── [./nz]
+│   └── [./transects]
 ├── ./renv
 ├── ./scripts
-│   ├── README.md
-│   ├── 
-│   ├── 
-│   ├── 
-│   ├── 
-│   ├── 
-│   ├── 
-│   ├── 
-│   ├── 
-│   └── 
+│   ├── [README.md]
+│   ├── 00a_renv-set-up.R
+│   ├── 00b_create-sf-transects.R
+│   ├── 01_data-wrangling_raw-to-standardised.R
+│   ├── 02_data-wrangling_spatial-and-duration-filters.R
+│   ├── 03-1_environmental-data_tdr.R
+│   ├── 03-2_environmental-data_chl-and-sst.R
+│   ├── 04_data-analysis_summary.R
+│   ├── 05_data-analysis_ordination-modelling-rarefaction-curves.R
+│   ├── source.R
+│   └── study-area-map.R
 ├── ./results
-│   └── PDF, CSV, and PNG files with results and EDA analyses
+│   ├── [./EDA] ** untracked, although some figures are presented in the manuscript
+│   └── PDF and CSV files with results... won't name them all here...
 ├── ./rmd_tex
-│   │  └── 
-│   ├── manuscript.Rmd
-│   └── references.bib
+│   ├── [./ms_seabirds-northland-nz] ** untracked folder containing Rmd files {rticle}
+│   └── ./TeX
+│       ├── .tex
+│       └── .bib
 └── far-out_seabirds.Rproj
 ```
 
@@ -87,6 +88,6 @@ Any bugs, suggestions, or enquires, please feel free to contact me or open an is
 
 This repository is under CC BY 4.0 license.
 
-Please refer to the original paper if using any piece of this repository (code and/or data). 
+Please refer to the original paper if using any piece of this repository. 
 
-Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Woehler EJ; Bugoni L; Rayment WJ. *(in prerp)*. Seasonality drives assemblages of seabird species off northeast Aotearoa New Zealand.
+Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(in prep)*. Seasonality rather than oceanography drives assemblages of seabird species off northeast Aotearoa New Zealand.
