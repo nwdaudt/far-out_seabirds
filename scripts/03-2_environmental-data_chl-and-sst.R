@@ -1,5 +1,5 @@
 ## 
-## Environmental variables
+## Environmental variables (CHL and SST)
 ##
 ## -------------------------------------------------------------------------- ##
 ## -------------------------------------------------------------------------- ##
@@ -184,7 +184,7 @@ chl_plot_zoomin <-
 # rm("chl_plot_zoomin")
 # gc()
 
-## Extract CHL data for each seabird count and create a boxplot ####
+## Extract CHL data for each seabird count and create a violin-plot ####
 
 # Note: 'voyage' and 'file_dirs' were created in the previous code session
 # Note 2: need to run the code "matching" seabird obs with raster name, too (L 131)
@@ -251,18 +251,22 @@ chl_SD <-
 ## I'll take advantage of this to include this information in the figure
 chl_SD[1] <- "SD ="
 
+df_seabirds_chl$season <- factor(df_seabirds_chl$season,
+                                 levels = c("summer", "autumn", "winter", "spring"),
+                                 labels = c("Summer", "Autumn", "Winter", "Spring"))
+
 chl_violin_voyage <-
   ggplot(df_seabirds_chl,
          aes(x = voyage, y = chl_a, color = season, fill = season)) + 
   geom_point(position = "jitter", size = 0.2) +
   geom_violin(alpha = 0.5) +
-  scale_fill_manual(values = c("summer" = "#4E79A7", "autumn" = "#F28E2B", 
-                               "winter" = "#E15759", "spring" = "#76B7B2"),
+  scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                               "Winter" = "#E15759", "Spring" = "#76B7B2"),
                     name = "") +
-  scale_color_manual(values = c("summer" = "#4E79A7", "autumn" = "#F28E2B", 
-                               "winter" = "#E15759", "spring" = "#76B7B2"),
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                               "Winter" = "#E15759", "Spring" = "#76B7B2"),
                     name = "") +
-  xlab("") + ylab("Chlorophyll-a concentration [mg m^-3]") +
+  xlab("") + ylab("Chlorophyll-a concentration [mg/m³]") +
   annotate("text", x = 1:10, y = 0.7, label = chl_SD, size = 2.5) +
   theme_bw() + 
   theme(axis.text = element_text(size = 8),
@@ -299,7 +303,7 @@ write.csv(df_seabirds_chl,
           file = "./data-processed/df_wide_species_chl.csv",
           row.names = FALSE)
 
-## Read SST, extract and save ####
+## Download, read and extract SST, and create a violin-plot ####
 
 # df_seabirds_chl <- read.csv("./data-processed/df_wide_species_chl.csv")
 
@@ -354,8 +358,110 @@ for(date_sst in dates_sst){
   rm("date_sst", "r", "df_sample", "sf_sample")
 }
 
+
+sst_SD <- 
+  df_seabirds_chl_sst %>% 
+  dplyr::group_by(voyage) %>% 
+  dplyr::summarise(sst_SD = round(sd(sst, na.rm = TRUE), digits = 2)) %>% 
+  dplyr::pull(sst_SD) %>% 
+  as.character()
+
+## Voyage 01 had only one observation within the study area, so the SD value is 'NA'
+## I'll take advantage of this to include this information in the figure
+sst_SD[1] <- "SD ="
+
+sst_violin_voyage <-
+  ggplot(df_seabirds_chl_sst,
+         aes(x = voyage, y = sst, color = season, fill = season)) + 
+  geom_point(position = "jitter", size = 0.2) +
+  geom_violin(alpha = 0.5) +
+  scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                               "Winter" = "#E15759", "Spring" = "#76B7B2"),
+                    name = "") +
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                "Winter" = "#E15759", "Spring" = "#76B7B2"),
+                     name = "") +
+  xlab("") + ylab("Sea surface temperature [°C]") +
+  annotate("text", x = 1:10, y = 23, label = sst_SD, size = 2.5) +
+  theme_bw() + 
+  theme(axis.text = element_text(size = 8),
+        axis.text.x = element_text(size = 8, 
+                                   angle = 45, vjust = 1, hjust = 1))
+
+ggsave(sst_violin_voyage,
+       filename = "./results/EDA/sst_violin-by-voyage.pdf",
+       height = 10, width = 12, units = "cm")
+
 ## Save 'df_seabirds_chl_sst' ####
 
 write.csv(df_seabirds_chl_sst,
           file = "./data-processed/df_wide_species_chl_sst.csv",
           row.names = FALSE)
+
+## CHL/SST (point) maps ####
+
+# df_seabirds_chl_sst <- read.csv("./data-processed/df_wide_species_chl_sst.csv")
+
+nz_base_map_simplified <- 
+  ggplot(data = nz_polygon) + 
+  geom_sf(color = "black", fill = "lightgrey") + 
+  geom_sf(data = isobaths[isobaths$DEPTH %in% c(200, 500),], 
+          aes(linetype  = as.factor(DEPTH)), colour = "black", linewidth = 0.15) +
+  scale_linetype_manual(values = c("dotted", "solid"), name = "Isobaths") +
+  coord_sf(xlim = c(172.6, 173.8), ylim = c(-35, -34.2)) + 
+  theme_bw()
+
+### SST 
+map_SST.counts <-
+  nz_base_map_simplified + 
+  geom_point(data = df_seabirds_chl_sst,
+             aes(x = lon, y = lat, fill = sst),
+             size = 1.1, shape = 21, alpha = 0.7) + 
+  scale_fill_gradient(low = "yellow2", high = "tomato3", name = "SST") +
+  coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
+  facet_wrap(~ voyage, ncol = 3) + 
+  xlab("") + ylab("") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        axis.text = element_text(size = 5.5),
+        strip.text = element_text(size = 6.5),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.position = c(0.71, 0.06),
+        legend.direction = "horizontal")
+
+ggsave(map_SST.counts,
+       filename = "./results/EDA/map_sst-each-10min-by-voyage.pdf",
+       height = 14, width = 11, units = "cm", dpi = 200)
+
+### CHL  
+map_CHL.counts <-
+  nz_base_map_simplified + 
+  geom_point(data = df_seabirds_chl_sst,
+             aes(x = lon, y = lat, fill = chl_a),
+             # aes(x = lon, y = lat, fill = chl_a_log),
+             size = 1.1, shape = 21, alpha = 0.7) + 
+  scale_fill_gradient(low = "lightgreen", high = "darkgreen", name = "CHL-a") +
+  # scale_fill_gradient(low = "lightgreen", high = "darkgreen", name = "log(CHL-a)") +
+  coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
+  facet_wrap(~ voyage, ncol = 3) + 
+  xlab("") + ylab("") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        axis.text = element_text(size = 5.5),
+        strip.text = element_text(size = 6.5),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.position = c(0.71, 0.06),
+        legend.direction = "horizontal")
+
+ggsave(map_CHL.counts,
+       filename = "./results/EDA/map_chl-each-10min-by-voyage.pdf",
+       height = 14, width = 11, units = "cm", dpi = 200)
+
+# Patchwork
+map_SST.CHL <- 
+  map_SST.counts + map_CHL.counts + 
+  patchwork::plot_annotation(tag_levels = 'A')
+
+ggsave(map_SST.CHL,
+       filename = "./results/EDA/map_SST-CHL-each-10min-by-voyage.pdf",
+       height = 14, width = 22, units = "cm", dpi = 200)

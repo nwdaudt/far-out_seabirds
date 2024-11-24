@@ -25,7 +25,7 @@ library(patchwork)
 
 ## Read seabird data raw ####
 
-df_long <- read.csv("./data-processed/df_long.csv") # Just in case
+df_long <- read.csv("./data-processed/df_long.csv")
 
 df_wide_groups <- 
   read.csv("./data-processed/df_wide_groups.csv") %>% 
@@ -40,8 +40,8 @@ df_wide_species <-
                                 labels = c("Summer", "Autumn", "Winter", "Spring")))
 
 # Get 'groups' (grps), 'taxa' (spp), and 'species' (sp_only) column mames
-grps_cols <- colnames(df_wide_groups[12:19])
-spp_cols <- colnames(df_wide_species[12:48]) # All "species" cols
+grps_cols <- colnames(df_wide_groups[12:17])[-2]
+spp_cols <- colnames(df_wide_species[12:49]) # All "species" cols
 sp_only_cols <- spp_cols[grepl("_sp$", spp_cols) == FALSE]
 
 ## Quick one -- any species that sum zero? (i.e. zero counts) ---------------- ##
@@ -59,6 +59,57 @@ sp_only_cols <- sp_only_cols[!sp_only_cols %in% zero_counts]
 
 rm("zero_counts")
 
+## Get 'sp_only_ROWS' from 'df_long', too
+sp_only_rows <- unique(df_long$seabird_sp)[-1] # "-1" == ""
+sp_only_rows <- sp_only_rows[grepl(" sp$", sp_only_rows) == FALSE]
+
+### Prep Biomass data ####
+
+df_biomass <- 
+  df_long %>% 
+  # Remove all obs without body mass (i.e. they are birds not IDed or START/END points)
+  dplyr::filter(!is.na(species_mass_kg)) %>% 
+  dplyr::mutate(biomass_km = (seabird_ct * species_mass_kg) / id_dist_km)
+
+## Groups --
+df_gr_biomass <- 
+  df_biomass %>% 
+  dplyr::group_by(season, seabird_gr_foraging) %>% 
+  dplyr::summarise(biomass_gr_km = sum(biomass_km))
+
+df_gr_biomass$season <- factor(df_gr_biomass$season,
+                               levels = c("summer", "autumn", "winter", "spring"),
+                               labels = c("Summer", "Autumn", "Winter", "Spring"))
+
+df_gr_biomass$seabird_gr_foraging <- factor(df_gr_biomass$seabird_gr_foraging,
+                                            levels = c("Larids",
+                                                       "Large procellariids",
+                                                       "Medium procellariids",
+                                                       "Small procellariids",
+                                                       "Sulids"),
+                                            labels = c("Skuas",
+                                                       "Large procellariids",
+                                                       "Medium procellariids",
+                                                       "Small procellariids",
+                                                       "Sulids"))
+## Species --
+df_sp_biomass <- 
+  df_biomass %>% 
+  dplyr::group_by(season, seabird_sp) %>% 
+  dplyr::summarise(biomass_sp_km = sum(biomass_km))
+
+df_sp_biomass <-
+  df_sp_biomass %>% 
+  dplyr::mutate(seabird_sp = dplyr::case_when(
+    seabird_sp == "Grey-faced petrel (Oi)" ~ "Grey-faced petrel",
+    seabird_sp == "Fluttering/Hutton's shearwater" ~ "Fluttering shearwater",
+    .default = as.character(seabird_sp)
+  ))
+
+df_sp_biomass$season <- factor(df_sp_biomass$season,
+                               levels = c("summer", "autumn", "winter", "spring"),
+                               labels = c("Summer", "Autumn", "Winter", "Spring"))
+
 ## Read spatial data ####
 
 nz_polygon <- sf::read_sf("./data-spatial/nz/nz-coastlines-and-islands-polygons-topo-150k.gpkg")
@@ -73,7 +124,7 @@ isobaths <-
 
 transects_polygon <- sf::read_sf("./data-spatial/transects/far-out_transects-3km-buffer-polygon.gpkg")
 
-## Effort summary ####
+## Effort summary (table) ####
 
 effort_summary <-
   df_wide_species %>% 
@@ -149,6 +200,7 @@ rm("map_10min_counts_season")
 
 ### Species richness and number of birds by transect and season ####
 
+## Summarise the data
 df_spp_aggregated <-
   df_wide_species %>% 
   # Group-by and summarise SPP
@@ -177,25 +229,101 @@ df_spp_aggregated <-
                                            "Winter", "Spring"))) %>% 
   dplyr::ungroup(.)
 
+## Summarise the biomass data... needs a bit of wrangling on its own
+df_biomass.transect_aggregated <-
+  df_biomass %>% 
+  dplyr::group_by(voyage, id_transect) %>% 
+  dplyr::summarise(biomass_km_voyage_transect = sum(biomass_km)) %>% 
+  dplyr::mutate(season = dplyr::case_when(
+    voyage == "01voyage" ~ "spring",
+    voyage == "02voyage" ~ "summer",
+    voyage == "03voyage" ~ "summer",
+    voyage == "04voyage" ~ "winter",
+    voyage == "05voyage" ~ "summer",
+    voyage == "06voyage" ~ "spring",
+    voyage == "07voyage" ~ "summer",
+    voyage == "08voyage" ~ "winter",
+    voyage == "09voyage" ~ "spring",
+    voyage == "10voyage" ~ "autumn")) %>% 
+  dplyr::mutate(season = factor(season, 
+                                levels = c("summer",  "autumn", 
+                                           "winter", "spring"),
+                                labels = c("Summer",  "Autumn", 
+                                           "Winter", "Spring"))) %>% 
+  dplyr::ungroup(.)
+
+## Get geometric mean/sd
+geom_mean.sd <- 
+  df_spp_aggregated %>% 
+  dplyr::group_by(season) %>% 
+  dplyr::summarise(sp_richness_g.mean = exp(mean(log(sp_richness))),
+                   sp_richness_g.sd = exp(sd(log(sp_richness))),
+                   total_birds_g.mean = exp(mean(log(total_birds))),
+                   total_birds_g.sd = exp(sd(log(total_birds))),
+                   density_birds_g.mean = exp(mean(log(density_birds))),
+                   density_birds_g.sd = exp(sd(log(density_birds))))
+
+tmp <- 
+  df_biomass.transect_aggregated %>% 
+  dplyr::group_by(season) %>% 
+  dplyr::summarise(biomass_g.mean = exp(mean(log(biomass_km_voyage_transect))),
+                   biomass_g.sd = exp(sd(log(biomass_km_voyage_transect))))
+
+# Put them together
+geom_mean.sd <- cbind(geom_mean.sd, tmp[, -1])
+
+## Get 'n' for each season
+n_per_season <- 
+  df_spp_aggregated %>% 
+  dplyr::group_by(season) %>% 
+  dplyr::summarise(n = n()) %>% 
+  dplyr::pull(n)
+
+n_per_season <- paste0("n = ", n_per_season)
+
+rm("tmp")
+
+### Plots
 violin_transect_sprich_season <- 
   ggplot(data = df_spp_aggregated,
-       aes(x = season, y = sp_richness, fill = season)) +
+       aes(x = season, y = sp_richness, fill = season, color = season)) +
   geom_violin(alpha = 0.8) +
   scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
-  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, by = 2)) +
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  geom_point(data = geom_mean.sd,
+             aes(x = season, y = sp_richness_g.mean), color = "black", size = 1.2) +
+  geom_linerange(data = geom_mean.sd,
+                aes(x = season,
+                    y = sp_richness_g.mean,
+                    ymin = (sp_richness_g.mean-sp_richness_g.sd),
+                    ymax = (sp_richness_g.mean+sp_richness_g.sd)),
+                color = "black") +
+  scale_y_continuous(limits = c(0, 12), breaks = seq(0, 12, by = 2)) +
+  annotate("text", x = 1:4, y = 11.2, label = n_per_season, size = 3) +
   xlab("") + ylab("Number of species") +
   theme_bw() + 
   theme(legend.position = "none",
         axis.title = element_text(size = 10),
         axis.text = element_text(size = 9))
-  
+
 violin_transect_nbirds_season <-
   ggplot(data = df_spp_aggregated,
-         aes(x = season, y = total_birds, fill = season)) +
+         aes(x = season, y = total_birds, fill = season, color = season)) +
   geom_violin(alpha = 0.8) +
   scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  geom_point(data = geom_mean.sd,
+             aes(x = season, y = total_birds_g.mean), color = "black", size = 1.2) +
+  geom_linerange(data = geom_mean.sd,
+                 aes(x = season,
+                     y = total_birds_g.mean,
+                     ymin = (total_birds_g.mean-total_birds_g.sd),
+                     ymax = (total_birds_g.mean+total_birds_g.sd)),
+                 color = "black") +
   scale_y_continuous(limits = c(0, 150), breaks = seq(0, 150, by = 50)) +
   xlab("") + ylab("Number of individuals") +
   theme_bw() + 
@@ -205,40 +333,68 @@ violin_transect_nbirds_season <-
 
 violin_transect_density_season <-
   ggplot(data = df_spp_aggregated,
-         aes(x = season, y = density_birds, fill = season)) +
+         aes(x = season, y = density_birds, fill = season, color = season)) +
   geom_violin(alpha = 0.8) +
   scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  geom_point(data = geom_mean.sd,
+             aes(x = season, y = density_birds_g.mean), color = "black", size = 1.2) +
+  geom_linerange(data = geom_mean.sd,
+                 aes(x = season,
+                     y = density_birds_g.mean,
+                     ymin = (density_birds_g.mean-density_birds_g.sd),
+                     ymax = (density_birds_g.mean+density_birds_g.sd)),
+                 color = "black") +
   xlab("") + ylab("Density (birds/km²)") +
   theme_bw() + 
   theme(legend.position = "none",
         axis.title = element_text(size = 10),
         axis.text = element_text(size = 9))
 
-# violin_transect_sprich_nbirds_season <- 
-#   violin_transect_sprich_season / violin_transect_nbirds_season + 
-#   patchwork::plot_annotation(tag_levels = 'A')
+violin_transect_biomass_season <-
+  ggplot(data = df_biomass.transect_aggregated,
+         aes(x = season, y = biomass_km_voyage_transect, fill = season, color = season)) +
+  geom_violin(alpha = 0.8) +
+  scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                               "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
+  geom_point(data = geom_mean.sd,
+             aes(x = season, y = biomass_g.mean), color = "black", size = 1.2) +
+  geom_linerange(data = geom_mean.sd,
+                 aes(x = season,
+                     y = biomass_g.mean,
+                     ymin = (biomass_g.mean-biomass_g.sd),
+                     ymax = (biomass_g.mean+biomass_g.sd)),
+                 color = "black") +
+  xlab("") + ylab("Biomass (kg/km²)") +
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 9))
 
-# ggsave(violin_transect_sprich_nbirds_season,
-#        filename = "./results/violin_season_sprich-nbirds-by-transect.pdf",
-#        height = 13, width = 10, units = "cm", dpi = 300)
-
-violin_transect_sprich_nbirds_density_season <- 
+## Patchwork them and save
+violin_transect_sprich_nbirds_density_biomass_season <- 
   violin_transect_sprich_season / 
   violin_transect_nbirds_season / 
-  violin_transect_density_season + 
+  violin_transect_density_season / 
+  violin_transect_biomass_season + 
   patchwork::plot_annotation(tag_levels = 'A')
 
-ggsave(violin_transect_sprich_nbirds_density_season,
-       filename = "./results/violin_season_sprich-nbirds-density-by-transect.pdf",
-       height = 16, width = 10, units = "cm", dpi = 300)
+ggsave(violin_transect_sprich_nbirds_density_biomass_season,
+       filename = "./results/violin_season_sprich-nbirds-density-biomass-by-transect.pdf",
+       height = 21, width = 10, units = "cm", dpi = 300)
 
 rm("violin_transect_sprich_season", 
    "violin_transect_nbirds_season",
    "violin_transect_density_season",
-   "violin_transect_sprich_nbirds_season", 
-   "violin_transect_sprich_nbirds_density_season",
-   "df_spp_aggregated")
+   "violin_transect_biomass_season",
+   "violin_transect_sprich_nbirds_density_biomass_season",
+   "df_spp_aggregated",
+   "df_biomass.transect_aggregated",
+   "geom_mean.sd")
 
 ### Groups/species number of individuals, lat/lon, by season ####
 
@@ -248,37 +404,37 @@ rm("violin_transect_sprich_season",
 # Groups
 data_groups_by_season <-
   df_wide_groups %>% 
-  dplyr::select(lat, lon, season, all_of(grps_cols)) %>% 
+  dplyr::select(lat, lon, season, id_dist_km, all_of(grps_cols)) %>% 
   tidyr::pivot_longer(cols = all_of(grps_cols),
                       names_to = "grps",
                       values_to = "grps_count") %>% 
+  dplyr::mutate(grps_density = grps_count / id_dist_km) %>% 
   dplyr::mutate(zero_non_zero = ifelse(grps_count == 0, "zero", "non_zero")) %>% 
   dplyr::mutate(grps = dplyr::case_when(
-    grps == "shearwater" ~ "Shearwater",
-    grps == "petrel" ~ "Petrel",
-    grps == "skua" ~ "Skua",
-    grps == "albatross" ~ "Albatross",
-    grps == "storm_diving_petrel" ~ "Storm and diving petrel",
-    grps == "australasian_gannet" ~ "Gannet",
-    grps == "mollymawk" ~ "Albatross",
-    grps == "gull" ~ "Gull",
-    grps == "prion" ~ "Prion"
+    grps == "medium_procellariids" ~ "Medium procellariids",
+    grps == "large_procellariids" ~ "Large procellariids",
+    grps == "small_procellariids" ~ "Small procellariids",
+    grps == "sulids" ~ "Sulids",
+    grps == "larids" ~ "Skuas",
   )) %>% 
-  dplyr::filter(! grps == "Gull")
+  dplyr::mutate(grps = factor(grps,
+                              levels = c("Large procellariids", "Medium procellariids",
+                                         "Small procellariids", "Sulids", "Skuas")))
 
 # Species
 data_species_by_season <-
   df_wide_species %>% 
-  dplyr::select(lat, lon, season, all_of(sp_only_cols)) %>% 
+  dplyr::select(lat, lon, season, id_dist_km, all_of(sp_only_cols)) %>% 
   tidyr::pivot_longer(cols = all_of(sp_only_cols),
                       names_to = "spp",
                       values_to = "spp_count") %>% 
+  dplyr::mutate(spp_density = spp_count / id_dist_km) %>% 
   dplyr::mutate(zero_non_zero = ifelse(spp_count == 0, "zero", "non_zero")) %>% 
   dplyr::mutate(spp = dplyr::case_when(
     spp == "bullers_shearwater" ~ "Buller's shearwater",
-    spp == "fluttering_huttons_shearwater" ~ "Fluttering shearwater",
+    spp == "fluttering_shearwater" ~ "Fluttering shearwater",
     spp == "flesh_footed_shearwater" ~ "Flesh-footed shearwater",
-    spp == "grey_faced_petrel_oi" ~ "Grey-faced petrel",
+    spp == "grey_faced_petrel" ~ "Grey-faced petrel",
     spp == "sooty_shearwater" ~ "Sooty shearwater",
     spp == "cook_pycroft_petrel" ~ "Cook's/pycroft's petrel",
     spp == "northern_giant_petrel" ~ "Northern giant petrel",
@@ -298,46 +454,49 @@ data_species_by_season <-
     spp == "cape_pigeon" ~ "Cape petrel",
     spp == "black_browed_albatross" ~ "Black-browed albatross",
     spp == "fairy_prion" ~ "Fairy prion",
-    spp == "white_necked_petrel" ~ "White-necked petrel"
+    spp == "white_necked_petrel" ~ "White-necked petrel",
+    spp == "brown_skua" ~ "Brown skua"
   ))
 
 #### (i) Groups - Map ####
 
-## A single plot with all groups
-
-map_grp_by_season_facetgrid <-
+map_grp.density_by_season_facetgrid <-
   nz_base_map_simplified +
   ## Bubbles
   geom_point(data = data_groups_by_season,
              aes(x = lon, y = lat,
-                 size = grps_count, 
+                 size = grps_density, 
                  shape = zero_non_zero, 
                  fill = season),
              alpha = 0.5) +
   scale_shape_manual(values = c("non_zero" = 21, "zero" = 4)) +
   scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                "Winter" = "#E15759", "Spring" = "#76B7B2")) +
-  scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Number of seabirds") +
+  scale_size_binned(range = c(1, 12), breaks = c(0.2,2.5,5,10), name = "Density (birds/km²)") +
   facet_grid(cols = vars(season), rows = vars(grps)) +
   guides(colour = "none", shape = "none", fill = "none") +
   xlab("") + ylab("") +
   theme_bw() + 
-  theme(strip.text = element_text(size = 8), 
-        axis.text = element_text(size = 7),
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+  theme(strip.text = element_text(size = 7), 
+        axis.text = element_text(size = 6),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        legend.title = element_text(size = 8.5))
 
-ggsave(map_grp_by_season_facetgrid,
-       filename = "./results/EDA/map_grps_by_season.pdf",
-       height = 27, width = 23, units = "cm")
+# ggsave(map_grp.density_by_season_facetgrid,
+#        filename = "./results/EDA/map_grps-density_by_season.pdf",
+#        height = 17, width = 20, units = "cm")
 
-rm("map_grp_by_season_facetgrid",
+rm("map_grp.density_by_season_facetgrid", 
+   # "map_grp_by_season_facetgrid",
    "data_groups_by_season")
+
+gc()
 
 #### (ii) Species - Violin plot ####
 
 violin_species_by_season <-
-  ggplot(data_species_by_season[data_species_by_season$spp_count > 0, ],
-         aes(x = log(spp_count), ## Note 'log()'
+  ggplot(data_species_by_season,
+         aes(x = log(spp_count), ## NOTE: 'log()'
              y = spp, 
              fill = season)) + 
   geom_violin(alpha = 0.8) +
@@ -376,14 +535,14 @@ for (sp in sp_only_cols_nicename) {
     nz_base_map_simplified +
     geom_point(data = data_species_by_season_subset,
                aes(x = lon, y = lat,
-                   size = spp_count, 
+                   size = spp_density, 
                    shape = zero_non_zero, 
                    fill = season),
                alpha = 0.5) +
     scale_shape_manual(values = c("non_zero" = 21, "zero" = 4)) +
     scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                  "Winter" = "#E15759", "Spring" = "#76B7B2")) +
-    scale_size_binned(range = c(1, 10), breaks = c(1,5,15,50,100), name = "Number of seabirds") +
+    scale_size_binned(range = c(1, 12), breaks = c(0.2,2.5,5,10), name = "Density (birds/km²)") +
     facet_grid(cols = vars(season), rows = vars(spp)) +
     guides(colour = "none", shape = "none", fill = "none") +
     xlab("") + ylab("") +
@@ -403,12 +562,12 @@ for (sp in sp_only_cols_nicename) {
 # map_species_by_season_list[["Buller's shearwater"]]
 # map_species_by_season_list[["Grey-faced petrel"]]
 
-saveRDS(map_species_by_season_list,
-        file = "./results/EDA/list_maps_species_by_season.rds")
+# saveRDS(map_species_by_season_list,
+#         file = "./results/EDA/list_maps_species_by_season.rds")
 
 rm("map_species_by_season_list",
    "data_species_by_season")
-# gc()
+gc()
 
 ### Species Frequency of occurrence and Relative abundance ####
 
@@ -435,9 +594,9 @@ data_species_fo_nf <-
   data_species_fo_nf %>% 
   dplyr::mutate(species_nice_name = dplyr::case_when(
     species == "bullers_shearwater" ~ "Buller's shearwater",
-    species == "fluttering_huttons_shearwater" ~ "Fluttering shearwater",
+    species == "fluttering_shearwater" ~ "Fluttering shearwater",
     species == "flesh_footed_shearwater" ~ "Flesh-footed shearwater",
-    species == "grey_faced_petrel_oi" ~ "Grey-faced petrel",
+    species == "grey_faced_petrel" ~ "Grey-faced petrel",
     species == "sooty_shearwater" ~ "Sooty shearwater",
     species == "cook_pycroft_petrel" ~ "Cook's/pycroft's petrel",
     species == "northern_giant_petrel" ~ "Northern giant petrel",
@@ -457,7 +616,8 @@ data_species_fo_nf <-
     species == "cape_pigeon" ~ "Cape petrel",
     species == "black_browed_albatross" ~ "Black-browed albatross",
     species == "fairy_prion" ~ "Fairy prion",
-    species == "white_necked_petrel" ~ "White-necked petrel"
+    species == "white_necked_petrel" ~ "White-necked petrel",
+    species == "brown_skua" ~ "Brown skua"
   ))
 
 rm("funs")
@@ -517,54 +677,29 @@ rm("plot_freq_occ", "plot_freq_num", "freqs_occ_num", "data_species_fo_nf")
 
 ### Groups/species biomass, by season ####
 
-df_biomass <- 
-  df_long %>% 
-  dplyr::filter(!is.na(species_mass_kg)) %>% 
-  dplyr::mutate(biomass = seabird_ct * species_mass_kg)
+##### (%) Percentage
 
 ## Groups --
-df_gr_biomass <- 
-  df_biomass %>% 
-  dplyr::group_by(season, seabird_gr) %>% 
-  dplyr::summarise(biomass_gr = sum(biomass))
-
-df_gr_biomass$season <- factor(df_gr_biomass$season,
-                               levels = c("summer", "autumn", "winter", "spring"),
-                               labels = c("Summer", "Autumn", "Winter", "Spring"))
-
 biomass_gr_plot <-
   ggplot(df_gr_biomass, 
-         aes(x = season, y = biomass_gr, fill = seabird_gr)) +
+         aes(x = season, y = biomass_gr_km, fill = seabird_gr_foraging)) +
   geom_bar(position = "fill", stat = "identity") + 
   scale_fill_brewer(palette = "Dark2", name = NULL) + 
   scale_y_continuous(labels = c("0%", "25%", "50%", "75%", "100%")) + 
-  xlab("") + ylab("% Total biomass") + 
+  xlab("") + ylab("% Biomass (kg/km²)") + 
+  guides(fill = guide_legend(ncol = 1)) +
   theme_bw() + 
-  theme(axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 9, colour = "black"),
-        axis.text.x = element_text(size = 11, colour = "black"))
+  theme(axis.title.y = element_text(size = 9),
+        axis.text.y = element_text(size = 8, colour = "black"),
+        axis.text.x = element_text(size = 7.5, colour = "black"),
+        legend.text = element_text(size = 7),
+        legend.position = "right")
 
 # ggsave(biomass_gr_plot,
 #        filename = "./results/biomass-per-group.pdf",
 #        width = 18, height = 12, units = "cm", dpi = 300)
 
 ## Species --
-df_sp_biomass <- 
-  df_biomass %>% 
-  dplyr::group_by(season, seabird_sp) %>% 
-  dplyr::summarise(biomass_sp = sum(biomass))
-
-df_sp_biomass <-
-  df_sp_biomass %>% 
-  dplyr::mutate(seabird_sp = dplyr::case_when(
-    seabird_sp == "Grey-faced petrel (Oi)" ~ "Grey-faced petrel",
-    seabird_sp == "Fluttering/Hutton's shearwater" ~ "Fluttering shearwater",
-    .default = as.character(seabird_sp)
-  ))
-
-df_sp_biomass$season <- factor(df_sp_biomass$season,
-                               levels = c("summer", "autumn", "winter", "spring"),
-                               labels = c("Summer", "Autumn", "Winter", "Spring"))
 
 # pal_26cols <- colorRampPalette(RColorBrewer::brewer.pal(12, "Paired"))(26)
 
@@ -572,26 +707,123 @@ pal_26cols <- colorRampPalette(RColorBrewer::brewer.pal(9, "Set1"))(26)
 
 biomass_sp_plot <-
   ggplot(df_sp_biomass, 
-         aes(x = season, y = biomass_sp, fill = seabird_sp)) +
+         aes(x = season, y = biomass_sp_km, fill = seabird_sp)) +
   geom_bar(position = "fill", stat = "identity") + 
   # scale_fill_brewer(palette = "Dark2", name = NULL) + 
   scale_fill_manual(values = pal_26cols, name = NULL) +
   scale_y_continuous(labels = c("0%", "25%", "50%", "75%", "100%")) + 
-  xlab("") + ylab("% Total biomass") + 
+  xlab("") + ylab("% Biomass (kg/km²)") + 
+  guides(fill = guide_legend(ncol = 2)) +
   theme_bw() + 
-  theme(axis.title.y = element_text(size = 10),
-        axis.text.y = element_text(size = 9, colour = "black"),
-        axis.text.x = element_text(size = 11, colour = "black"))
+  theme(axis.title.y = element_text(size = 9),
+        axis.text.y = element_text(size = 8, colour = "black"),
+        axis.text.x = element_text(size = 7.5, colour = "black"),
+        legend.text = element_text(size = 7),
+        legend.position = "right")
 
 # ggsave(biomass_sp_plot,
 #        filename = "./results/biomass-per-species.pdf",
 #        width = 22, height = 12, units = "cm", dpi = 300)
 
-biomass_plot <-
-  biomass_gr_plot / 
-  biomass_sp_plot + 
-  patchwork::plot_annotation(tag_levels = 'A')
+##### Stack
 
-ggsave(biomass_plot,
-       filename = "./results/biomass-patchwork.pdf",
-       width = 22, height = 20, units = "cm", dpi = 300)
+biomass_gr_plot_stack <-
+  ggplot(df_gr_biomass, 
+         aes(x = season, y = biomass_gr_km, fill = seabird_gr_foraging)) +
+  geom_bar(position = "stack", stat = "identity") + 
+  scale_fill_brewer(palette = "Dark2", name = NULL) + 
+  xlab("") + ylab("Total biomass (kg/km²)") + 
+  theme_bw() + 
+  theme(axis.title.y = element_text(size = 9),
+        axis.text.y = element_text(size = 8, colour = "black"),
+        axis.text.x = element_text(size = 7.5, colour = "black"),
+        legend.position = "none")
+
+biomass_sp_plot_stack <-
+  ggplot(df_sp_biomass, 
+         aes(x = season, y = biomass_sp_km, fill = seabird_sp)) +
+  geom_bar(position = "stack", stat = "identity") + 
+  scale_fill_manual(values = pal_26cols, name = NULL) +
+  xlab("") + ylab("Total biomass (kg/km²)") + 
+  theme_bw() + 
+  theme(axis.title.y = element_text(size = 9),
+        axis.text.y = element_text(size = 8, colour = "black"),
+        axis.text.x = element_text(size = 7.5, colour = "black"),
+        legend.position = "none")
+
+#### Patchwork
+
+layout <- "
+AAABBB#
+CCCDDD#
+"
+
+biomass_plot <-
+  biomass_gr_plot_stack + biomass_gr_plot + 
+  biomass_sp_plot_stack + biomass_sp_plot + 
+  patchwork::plot_annotation(tag_levels = 'A') + 
+  patchwork::plot_layout(design = layout)
+
+# ggsave(biomass_plot,
+#        filename = "./results/biomass-patchwork.pdf",
+#        width = 22, height = 16, units = "cm", dpi = 300)
+
+rm("biomass_gr_plot_stack", "biomass_gr_plot",
+   "biomass_sp_plot_stack", "biomass_sp_plot")
+
+### Selected spp ~ env vars #### 
+
+df_wide_species_env <- 
+  read.csv("./data-processed/df_wide_species_chl_sst.csv")
+
+cols_selected_spp <- c("bullers_shearwater", "grey_faced_petrel", "black_petrel",
+                  "cook_pycroft_petrel", "white_faced_storm_petrel", "fairy_prion",
+                  "fluttering_shearwater", "flesh_footed_shearwater")
+
+cols_env_vars <- c("chl_a", "chl_a_log", "sst")
+
+df_selected_spp_env <-
+  df_wide_species_env %>% 
+  dplyr::select(all_of(c(cols_selected_spp, cols_env_vars))) %>% 
+  ## Transform it to long-format (first 'spp', then 'env_vars')
+  tidyr::pivot_longer(cols = all_of(cols_selected_spp),
+                      names_to = "spp",
+                      values_to = "spp_numbers") %>% 
+  tidyr::pivot_longer(cols = all_of(cols_env_vars),
+                      names_to = "env_vars",
+                      values_to = "env_vars_value") %>% 
+  ## Filter away 'zero' observations
+  dplyr::filter(! spp_numbers == 0) %>% 
+  dplyr::mutate(spp = case_when(
+    spp == "bullers_shearwater" ~ "Buller's shearwater",
+    spp == "grey_faced_petrel" ~ "Grey-faced petrel",
+    spp == "black_petrel" ~ "Black petrel",
+    spp == "cook_pycroft_petrel" ~ "Cook's/Pycroft's petrel",
+    spp == "white_faced_storm_petrel" ~ "White-faced storm petrel",
+    spp == "fairy_prion" ~ "Fairy prion",
+    spp == "fluttering_shearwater" ~ "Fluttering shearwater",
+    spp == "flesh_footed_shearwater" ~ "Flesh-footed shearwater"
+  )) %>% 
+  dplyr::mutate(env_vars = case_when(
+    env_vars == "chl_a" ~ "CHL-a",
+    env_vars == "chl_a_log" ~ "log(CHL-a)",
+    env_vars == "sst" ~ "SST"
+  ))
+
+plot_selected_spp_env_vars <-
+  ggplot(data = df_selected_spp_env,
+         aes(x = env_vars_value, y = log(spp_numbers))) +
+  geom_point(alpha = 0.8, size = 0.8) + 
+  geom_smooth() + ## Using default LOESS
+  facet_wrap(~ spp + env_vars, 
+             nrow = 8, ncol = 3,
+             scales = "free") +
+  xlab("Environmental gradient") + ylab("log(Seabird count [ind/10-min])") + 
+  theme_bw() +
+  theme(strip.text = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        axis.text = element_text(size = 6))
+
+ggsave(plot_selected_spp_env_vars,
+       filename = "./results/selected-spp_vs_env-vars.pdf",
+       width = 16, height = 22, units = "cm", dpi = 300)

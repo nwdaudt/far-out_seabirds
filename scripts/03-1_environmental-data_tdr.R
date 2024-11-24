@@ -193,7 +193,7 @@ tdr_profiles <-
   ggplot(tdr_interp_plot, 
          aes(x = profile, y = depth*-1)) + 
   geom_raster(aes(fill = value)) + 
-  scale_fill_viridis_c(option = "inferno", "Temperature (C°)", 
+  scale_fill_viridis_c(option = "inferno", "Temperature (°C)", 
                        na.value = "grey90") +
   stat_contour(aes(z = value), binwidth = 0.5, 
                color="white", linewidth = 0.35) +
@@ -201,7 +201,7 @@ tdr_profiles <-
             aes(x = as.numeric(profile), y = depth_mld*-1, group = voyage), 
             color = "cyan", linewidth = 1) +
   facet_wrap(~voyage, scales = "free_x") + 
-  xlab("TDR profile") + ylab("Depth") + 
+  xlab("TDR profile") + ylab("Depth (m)") + 
   theme_bw() +
   theme(legend.position = c(0.8, 0.3),
         legend.text = element_text(size = 12, colour = "black"),

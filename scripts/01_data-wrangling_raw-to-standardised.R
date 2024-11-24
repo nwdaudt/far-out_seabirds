@@ -745,18 +745,71 @@ df_FarOut_tidy <-
 
 rm("tmp")
 
-## Lastly, let's call mollymawks as albatrosses in 'seabird_gr'
+## Also, let's call mollymawks as albatrosses in 'seabird_gr'
 
 df_FarOut_tidy <- 
   df_FarOut_tidy %>% 
   dplyr::mutate(seabird_gr = ifelse(seabird_gr == "Mollymawk",
                                     yes = "Albatross", no = as.character(seabird_gr)))
 
-## ... and change (fix!) "Grey petrel" to "Grey-faced petrel (Oi)" -- the former was wrongly specified in the field, and checked later
+## ... and change (fix!) "Grey petrel" to "Grey-faced petrel (Oi)" -- the former was wrongly ID'ed in the field and checked later
 df_FarOut_tidy <- 
   df_FarOut_tidy %>% 
   dplyr::mutate(seabird_sp = ifelse(seabird_sp == "Grey petrel",
                                     yes = "Grey-faced petrel (Oi)", no = as.character(seabird_sp)))
+
+### Lastly, let's create another 'group' column according to their feeding guilds/foraging behaviour
+# Large procellariids (albatrosses, giant petrels)
+# Medium procellariids (petrels, shearwaters)
+# Small procellariids (storm petrels, diving-petrels, prions)
+# Sulids (gannet) 
+# Larids (skuas, gulls)
+
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>% 
+  dplyr::mutate(seabird_gr_foraging = dplyr::case_when(
+    seabird_sp == "Buller's shearwater" ~ "Medium procellariids",
+    seabird_sp == "Fluttering/Hutton's shearwater" ~ "Medium procellariids",
+    seabird_sp == "Flesh-footed shearwater" ~ "Medium procellariids",
+    seabird_sp == "Sooty shearwater" ~ "Medium procellariids",
+    seabird_sp == "Grey-faced petrel (Oi)" ~ "Medium procellariids",
+    seabird_sp == "White-chinned petrel" ~ "Medium procellariids",
+    seabird_sp == "Cook/Pycroft petrel" ~ "Medium procellariids",
+    seabird_sp == "Northern giant petrel" ~ "Large procellariids",
+    seabird_sp == "Black petrel" ~ "Medium procellariids",
+    seabird_sp == "Wandering albatross" ~ "Large procellariids",
+    seabird_sp == "Wilson's storm petrel" ~ "Small procellariids",
+    seabird_sp == "Black-winged petrel" ~ "Medium procellariids",
+    seabird_sp == "Australasian gannet" ~ "Sulids",
+    seabird_sp == "Campbell albatross" ~ "Large procellariids",
+    seabird_sp == "Little shearwater" ~ "Medium procellariids",
+    seabird_sp == "White-faced storm petrel" ~ "Small procellariids",
+    seabird_sp == "Black-bellied storm petrel" ~ "Small procellariids",
+    seabird_sp == "Northern royal albatross" ~ "Large procellariids",
+    seabird_sp == "White-bellied storm petrel" ~ "Small procellariids",
+    seabird_sp == "Red-billed gull" ~ "Larids",
+    seabird_sp == "Black-billed gull" ~ "Larids",
+    seabird_sp == "Diving petrel" ~ "Small procellariids",
+    seabird_sp == "NZ storm petrel" ~ "Small procellariids",
+    seabird_sp == "Arctic skua" ~ "Larids",
+    seabird_sp == "White-capped albatross" ~ "Large procellariids",
+    seabird_sp == "Cape pigeon" ~ "Medium procellariids",
+    seabird_sp == "Black-browed albatross" ~ "Large procellariids",
+    seabird_sp == "Fairy prion" ~ "Small procellariids",
+    seabird_sp == "Southern royal albatross" ~ "Large procellariids",
+    seabird_sp == "Buller's albatross" ~ "Large procellariids",
+    seabird_sp == "White-necked petrel" ~ "Medium procellariids",
+    seabird_sp == "Brown skua" ~ "Larids",
+    .default = NA
+  ), .after = seabird_gr)
+
+### And rename two species names
+df_FarOut_tidy <- 
+  df_FarOut_tidy %>% 
+  dplyr::mutate(seabird_sp = ifelse(seabird_sp == "Grey-faced petrel (Oi)",
+                                    yes = "Grey-faced petrel", no = as.character(seabird_sp))) %>% 
+  dplyr::mutate(seabird_sp = ifelse(seabird_sp == "Fluttering/Hutton's shearwater",
+                                    yes = "Fluttering shearwater", no = as.character(seabird_sp)))
 
 ### Add species mass to calculate biomass ####
 
@@ -769,10 +822,10 @@ df_FarOut_tidy <-
   df_FarOut_tidy %>% 
   dplyr::mutate(species_mass_kg = dplyr::case_when(
     seabird_sp == "Buller's shearwater" ~ 0.425,
-    seabird_sp == "Fluttering/Hutton's shearwater" ~ 0.325, # Average between species
+    seabird_sp == "Fluttering shearwater" ~ 0.325, # Average between species
     seabird_sp == "Flesh-footed shearwater" ~ 0.6,
     seabird_sp == "Sooty shearwater" ~ 0.8,
-    seabird_sp == "Grey-faced petrel (Oi)" ~ 0.55,
+    seabird_sp == "Grey-faced petrel" ~ 0.55,
     seabird_sp == "White-chinned petrel" ~ 1.25,
     seabird_sp == "Cook/Pycroft petrel" ~ 0.175, # Average between species
     seabird_sp == "Northern giant petrel" ~ 4.5,
@@ -850,12 +903,12 @@ id_df <-
 gr_df <- 
   df_FarOut_tidy %>%
   dplyr::filter(home_screen == "Seabird count") %>% 
-  dplyr::select(id, seabird_gr, seabird_ct) %>%
-  dplyr::group_by(id, seabird_gr) %>%
+  dplyr::select(id, seabird_gr_foraging, seabird_ct) %>%
+  dplyr::group_by(id, seabird_gr_foraging) %>%
   dplyr::summarise(seabird_ct = sum(seabird_ct)) %>%
   dplyr::ungroup(.) %>% 
   tidyr::pivot_wider(id_cols = id,
-                     names_from = seabird_gr,
+                     names_from = seabird_gr_foraging,
                      values_from = seabird_ct,
                      values_fill = 0)
 

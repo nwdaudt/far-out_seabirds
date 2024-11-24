@@ -182,7 +182,7 @@ plot_gllvm_null_season <-
          aes(x = V1,
              y = rep(0, times = nrow(df_plot_null_model)),
              color = season)) +
-  geom_point(alpha = 0.6) +
+  geom_point(alpha = 0.6, size = 2) +
   scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B",
                                 "Winter" = "#E15759", "Spring" = "#76B7B2")) +
   xlab("Latent Variable 1") + ylab("") +
@@ -190,9 +190,10 @@ plot_gllvm_null_season <-
   theme(axis.title.x = element_text(size = 10),
         axis.text.x = element_text(size = 10),
         axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size = 10),
-        legend.position = "bottom")
+        legend.position = "right")
 
 plot_gllvm_null_season <-
   ggExtra::ggMarginal(plot_gllvm_null_season,
@@ -210,21 +211,22 @@ plot_gllvm_null_chl <-
          aes(x = V1,
              y = rep(0, times = nrow(df_plot_null_model)),
              color = chl_a)) +
-  geom_point(alpha = 0.6, size = 3) +
+  geom_point(alpha = 0.6, size = 2) +
   scale_color_gradient(low = "lightgreen", high = "darkgreen", 
-                       name = "Chlorophyll-a concentration [mg/m³]") + 
+                       name = "CHL-a [mg/m³]") + 
   xlab("Latent Variable 1") + ylab("") +
   facet_wrap(~ season, scales = "free") +
   theme_bw() +
   theme(axis.title.x = element_text(size = 10),
         axis.text.x = element_text(size = 10),
         axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
         legend.text = element_text(size = 10),
         legend.position = "bottom")
 
 # ggsave(plot_gllvm_null_chl,
 #        filename = "./results/gllvm_null_lv1_biplot_facet-season-chl.pdf",
-#        height = 12, width = 14, units = "cm", dpi = 300)
+#        height = 11, width = 13, units = "cm", dpi = 300)
 
 ## Colour-code by SST
 plot_gllvm_null_sst <-
@@ -232,30 +234,52 @@ plot_gllvm_null_sst <-
          aes(x = V1,
              y = rep(0, times = nrow(df_plot_null_model)),
              color = sst)) +
-  geom_point(alpha = 0.6, size = 3) +
+  geom_point(alpha = 0.6, size = 2) +
   scale_color_gradient(low = "yellow2", high = "tomato3", 
-                       name = "Sea surface temperature") + 
+                       name = "SST [°C]") + 
   xlab("Latent Variable 1") + ylab("") +
   facet_wrap(~ season, scales = "free") +
   theme_bw() +
   theme(axis.title.x = element_text(size = 10),
         axis.text.x = element_text(size = 10),
         axis.text.y = element_blank(),
-        legend.title = element_blank(),
+        axis.ticks.y = element_blank(),
         legend.text = element_text(size = 10),
         legend.position = "bottom")
 
 # ggsave(plot_gllvm_null_sst,
 #        filename = "./results/gllvm_null_lv1_biplot_facet-season-sst.pdf",
-#        height = 12, width = 14, units = "cm", dpi = 300)
+#        height = 11, width = 13, units = "cm", dpi = 300)
+
+### Tile them together
+design <- "AA
+           AA
+           BB
+           BB
+           CC
+           CC"
+
+gllvm_null_tile <- 
+  patchwork::wrap_plots(A = plot_gllvm_null_season,
+                        B = plot_gllvm_null_sst,
+                        C = plot_gllvm_null_chl,
+                        design = design) +
+  patchwork::plot_annotation(tag_levels = 'A')
+
+ggsave(gllvm_null_tile,
+       filename = "./results/gllvm_null_lv1_biplot_tiled-A-B-C.pdf",
+       height = 22, width = 10, units = "cm", dpi = 300)
 
 rm("df_plot_null_model", 
-   "plot_gllvm_null_season", "plot_gllvm_null_chl", "plot_gllvm_null_sst")
+   "plot_gllvm_null_season", "plot_gllvm_null_chl", "plot_gllvm_null_sst",
+   "gllvm_null_tile")
 
 ### Save the model object in case needed later ------------------------------ ##
 
-saveRDS(gllvm_null_lv1,
-        file = "./results/gllvm_null_lv1_model.rds")
+# saveRDS(gllvm_null_lv1,
+#         file = "./results/gllvm_null_lv1_model.rds")
+
+# gllvm_null_lv1 <- readRDS("./results/gllvm_null_lv1_model.rds")
 
 ### Unconstrained GLLVM, accounting predictors ####
 
@@ -448,8 +472,10 @@ rm("gllvm_pred_lv1_season.chl.sst",
 
 ### Save the model object in case needed later ------------------------------ ##
 
-saveRDS(gllvm_pred_lv0_season,
-        file = "./results/gllvm_pred_lv0_season_model.rds")
+# saveRDS(gllvm_pred_lv0_season,
+#         file = "./results/gllvm_pred_lv0_season_model.rds")
+
+# gllvm_pred_lv0_season <- readRDS("./results/gllvm_pred_lv0_season_model.rds")
 
 ### Coefficient plot -------------------------------------------------------- ##
 
