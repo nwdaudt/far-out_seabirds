@@ -5,7 +5,7 @@ data-processed/
 data-spatial/
 # Environmental layers don't need to be shared as they are publicly available (data-spatial/environmental-data)
 # NZ coastline and Isobaths are vectors, no need to add to GitHub (data-spatial/nz) 
-# Transects et al are build with scripts, so don't need to share either (data-spatial/transects)
+# Transects et al are build through the scripts, so don't need to share either (data-spatial/transects)
 
 # Exploratory Data Analysis (EDA) -- not necessarily share them all
 results/EDA
@@ -20,7 +20,7 @@ rmd_tex/
 # High-level wording without all the nitty-griddies
 summary-results_seabirds-FarOut.doc
 summary-results_seabirds-FarOut.pdf
-
+plain-language-summary_seabirds-FarOut.doc
 
 
 # History files
