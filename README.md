@@ -20,11 +20,11 @@ far-out_seabirds
 ├── [./data-raw] ** untracked folder containing raw data
 ├── [./data-processed] ** untracked folder containing tidy data
 ├── [./data-spatial] ** untracked folder containing spatial data
-│   ├── [./environmental-data] 
-│   │   ├── [./chl]
-│   │   └── [./sst]
-│   ├── [./nz]
-│   └── [./transects]
+│   ├── ./environmental-data
+│   │   ├── ./chl
+│   │   └── ./sst
+│   ├── ./nz
+│   └── ./transects
 ├── ./renv
 ├── ./scripts
 │   ├── [README.md]
@@ -40,10 +40,10 @@ far-out_seabirds
 │   └── study-area-map.R
 ├── ./results
 │   ├── [./EDA] ** untracked, although some figures are presented in the manuscript
-│   └── PDF and CSV files with results... won't name them all here...
-├── ./rmd_tex
-│   ├── [./ms_seabirds-northland-nz] ** untracked folder containing Rmd files {rticle}
-│   └── ./TeX
+│   └── PDF and CSV files with results
+├── [./rmd_tex] ** untracked folder containing files for journal submission
+│   ├── [./ms_seabirds-northland-nz]
+│   └── [./TeX]
 │       ├── .tex
 │       └── .bib
 └── far-out_seabirds.Rproj
@@ -88,6 +88,6 @@ Any bugs, suggestions, or enquires, please feel free to contact me or open an is
 
 This repository is under CC BY 4.0 license.
 
-Please refer to the original paper if using any piece of this repository. 
+Please refer to the original paper if using any piece of this repository.
 
 Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(in prep)*. Seasonality rather than oceanography drives assemblages of seabird species off northeast Aotearoa New Zealand.
