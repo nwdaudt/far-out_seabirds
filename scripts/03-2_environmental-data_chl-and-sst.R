@@ -266,42 +266,25 @@ chl_violin_voyage <-
   scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                "Winter" = "#E15759", "Spring" = "#76B7B2"),
                     name = "") +
-  xlab("") + ylab("Chlorophyll-a concentration [mg/m³]") +
+  xlab("") + ylab("Chlorophyll-a concentration (mg/m³)") +
   annotate("text", x = 1:10, y = 0.7, label = chl_SD, size = 2.5) +
   theme_bw() + 
   theme(axis.text = element_text(size = 8),
         axis.text.x = element_text(size = 8, 
                                    angle = 45, vjust = 1, hjust = 1))
 
-ggsave(chl_violin_voyage,
-       filename = "./results/EDA/chl_violin-by-voyage.pdf",
-       height = 10, width = 12, units = "cm")
-
-## Boxplot instead of violin
-# chl_boxplot_voyage <-
-#   ggplot(df_seabirds_chl,
-#          aes(x = voyage, y = chl_a, fill = season)) + 
-#   geom_boxplot() +
-#   scale_fill_manual(values = c("summer" = "#4E79A7", "autumn" = "#F28E2B", 
-#                                "winter" = "#E15759", "spring" = "#76B7B2"),
-#                     name = "") +
-#   xlab("") + ylab("Chlorophyll-a concentration [mg m^-3]") +
-#   theme_bw() + 
-#   theme(axis.text = element_text(size = 8),
-#         axis.text.x = element_text(size = 8, 
-#                                    angle = 45, vjust = 1, hjust = 1))
-#
-# ggsave(chl_boxplot_voyage,
-#        filename = "./results/EDA/chl_boxplot-by-voyage.pdf",
+# ggsave(chl_violin_voyage,
+#        filename = "./results/EDA/chl_violin-by-voyage.pdf",
 #        height = 10, width = 12, units = "cm")
 
-## Save 'df_wide_species_chl' ####
 
+## Clean unused cols
 df_seabirds_chl <- df_seabirds_chl %>% dplyr::select(- c(raster_name, raster_date))
 
-write.csv(df_seabirds_chl,
-          file = "./data-processed/df_wide_species_chl.csv",
-          row.names = FALSE)
+## Backup?
+# write.csv(df_seabirds_chl,
+#           file = "./data-processed/df_wide_species_chl.csv",
+#           row.names = FALSE)
 
 ## Download, read and extract SST, and create a violin-plot ####
 
@@ -381,16 +364,16 @@ sst_violin_voyage <-
   scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
                                 "Winter" = "#E15759", "Spring" = "#76B7B2"),
                      name = "") +
-  xlab("") + ylab("Sea surface temperature [°C]") +
+  xlab("") + ylab("Sea surface temperature (°C)") +
   annotate("text", x = 1:10, y = 23, label = sst_SD, size = 2.5) +
   theme_bw() + 
   theme(axis.text = element_text(size = 8),
         axis.text.x = element_text(size = 8, 
                                    angle = 45, vjust = 1, hjust = 1))
 
-ggsave(sst_violin_voyage,
-       filename = "./results/EDA/sst_violin-by-voyage.pdf",
-       height = 10, width = 12, units = "cm")
+# ggsave(sst_violin_voyage,
+#        filename = "./results/EDA/sst_violin-by-voyage.pdf",
+#        height = 10, width = 12, units = "cm")
 
 ## Save 'df_seabirds_chl_sst' ####
 
@@ -429,9 +412,9 @@ map_SST.counts <-
         legend.position = c(0.71, 0.06),
         legend.direction = "horizontal")
 
-ggsave(map_SST.counts,
-       filename = "./results/EDA/map_sst-each-10min-by-voyage.pdf",
-       height = 14, width = 11, units = "cm", dpi = 200)
+# ggsave(map_SST.counts,
+#        filename = "./results/EDA/map_sst-each-10min-by-voyage.pdf",
+#        height = 14, width = 11, units = "cm", dpi = 200)
 
 ### CHL  
 map_CHL.counts <-
@@ -441,7 +424,6 @@ map_CHL.counts <-
              # aes(x = lon, y = lat, fill = chl_a_log),
              size = 1.1, shape = 21, alpha = 0.7) + 
   scale_fill_gradient(low = "lightgreen", high = "darkgreen", name = "CHL-a") +
-  # scale_fill_gradient(low = "lightgreen", high = "darkgreen", name = "log(CHL-a)") +
   coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
   facet_wrap(~ voyage, ncol = 3) + 
   xlab("") + ylab("") + 
@@ -453,15 +435,15 @@ map_CHL.counts <-
         legend.position = c(0.71, 0.06),
         legend.direction = "horizontal")
 
-ggsave(map_CHL.counts,
-       filename = "./results/EDA/map_chl-each-10min-by-voyage.pdf",
-       height = 14, width = 11, units = "cm", dpi = 200)
+# ggsave(map_CHL.counts,
+#        filename = "./results/EDA/map_chl-each-10min-by-voyage.pdf",
+#        height = 14, width = 11, units = "cm", dpi = 200)
 
 # Patchwork
 map_SST.CHL <- 
   map_SST.counts + map_CHL.counts + 
   patchwork::plot_annotation(tag_levels = 'A')
 
-ggsave(map_SST.CHL,
-       filename = "./results/EDA/map_SST-CHL-each-10min-by-voyage.pdf",
-       height = 14, width = 22, units = "cm", dpi = 200)
+# ggsave(map_SST.CHL,
+#        filename = "./results/EDA/map_SST-CHL-each-10min-by-voyage.pdf",
+#        height = 14, width = 22, units = "cm", dpi = 200)

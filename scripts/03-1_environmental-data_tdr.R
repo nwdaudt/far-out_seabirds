@@ -76,7 +76,7 @@ data <-
     date >= "2022-01-18" & date <= "2022-01-26" ~ "Voyage 05 (Summer)", 
     date >= "2022-11-12" & date <= "2022-11-20" ~ "Voyage 06 (Spring)", 
     date >= "2023-01-20" & date <= "2023-01-24" ~ "Voyage 07 (Summer)",
-    date >= "2023-05-25" & date <= "2023-05-26" ~ "Voyage 08 (Winter)", 
+    date >= "2023-05-25" & date <= "2023-05-26" ~ "Voyage 08 (Autumn)", 
     date >= "2023-11-14" & date <= "2023-11-25" ~ "Voyage 09 (Spring)",
     date >= "2024-05-04" & date <= "2024-05-06" ~ "Voyage 10 (Autumn)"), 
     .before = everything())
@@ -95,10 +95,10 @@ data <-
   dplyr::mutate(id_profile_continuous = dplyr::cur_group_id(), .after = id_profile) %>% 
   dplyr::ungroup(.)
 
-## Filter away Voyage 8 id_profile 61 -- there are only 3 values, which is clearly wrong
+## Filter away Voyage 8 id_profile 61 -- there are only a few values, which is clearly wrong
 data <- 
   data %>% 
-  dplyr::filter(! c(voyage == "Voyage 08 (Winter)" & id_profile == 61))
+  dplyr::filter(! c(voyage == "Voyage 08 (Autumn)" & id_profile == 61))
 
 ## Plot the TDR profiles #### 
 
@@ -238,73 +238,6 @@ rm("tmp")
 #           file = "./data-processed/tdr_tidy-2_interpolated.csv",
 #           row.names = FALSE)
 
-## -------------------------------------------------------------------------- ##
-## -------------------------------------------------------------------------- ##
-### Plot of the raw data (i.e. no interpolation)
-# tdr_profiles_points <-
-#   ggplot(data,
-#          aes(x = id_profile_continuous,
-#              y = depth_m * -1,
-#              color = temperature_deg_c)) +
-#   geom_point() +
-#   scale_color_viridis_c(option = "inferno", "Temperature (C°)") +
-#   facet_wrap(~ voyage, scales = "free_x") +
-#   xlab("") + ylab("Depth (m)") +
-#   # theme_bw() +
-#   theme(legend.position = c(0.8, 0.3),
-#         legend.text = element_text(size = 12, colour = "black"),
-#         legend.title = element_text(size = 12, colour = "black"),
-#         axis.title.y = element_text(size = 12, colour = "black"),
-#         axis.text.y = element_text(size = 10, colour = "black"),
-#         # axis.text.x = element_blank(),
-#         strip.text = element_text(size = 10, colour = "black"),
-#         panel.grid.major.x = element_blank(),
-#         panel.grid.minor.x = element_blank())
-# 
-# ggsave(tdr_profiles_points,
-#        filename = "./results/TDR-profiles.pdf",
-#        height = 15, width = 20, units = "cm", dpi = 300)
-
-## Plot (spatially) where the TDR profiles where taken ####
-
-nz_polygon <- sf::read_sf("./data-spatial/nz/nz-coastlines-and-islands-polygons-topo-150k.gpkg")
-study_area_polygon <- sf::read_sf("./data-spatial/transects/far-out_transects-3km-buffer-polygon.gpkg")
-
-nz_base_map_simplified <- 
-  ggplot(data = nz_polygon) + 
-  geom_sf(color = "black", fill = "lightgrey") + 
-  coord_sf(xlim = c(172.6, 173.8), ylim = c(-35, -34.2)) + 
-  theme_bw()
-
-data_id_profiles <- 
-  data %>% dplyr::distinct(id_profile_continuous, .keep_all = TRUE)
-
-map_profile_locations <-
-  nz_base_map_simplified + 
-  geom_point(data = data_id_profiles,
-             aes(x = longitude, y = latitude),
-             size = 2, shape = 21, fill = "red", alpha = 0.7) + 
-  geom_label_repel(data = data_id_profiles,
-                   aes(x = longitude, y = latitude, label = id_profile_continuous),
-                   box.padding   = 0.35, 
-                   point.padding = 0.5,
-                   force = 2,
-                   segment.color = 'grey50',
-                   max.overlaps = 20) + 
-  geom_sf(data = study_area_polygon, fill = NA) + 
-  coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
-  facet_wrap(~ voyage) + 
-  xlab("") + ylab("") + 
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
-
-
-ggsave(map_profile_locations,
-       filename = "./results/TDR-profiles_map.pdf",
-       height = 16, width = 22, units = "cm", dpi = 300)
-
-rm("nz_polygon", "study_area_polygon", "nz_base_map_simplified", 
-   "data_id_profiles", "map_profile_locations")
-
 ## Get temperature at the surface (0-10m depth) [sst], merge [mld] & save it ####
 
 tdr_sst <- 
@@ -342,3 +275,86 @@ data <-
 # write.csv(data,
 #           file = "./data-processed/tdr_tidy-1_raw-with-sst-mld.csv",
 #           row.names = FALSE)
+
+## Plot (spatially) where the TDR profiles where taken ####
+
+nz_polygon <- sf::read_sf("./data-spatial/nz/nz-coastlines-and-islands-polygons-topo-150k.gpkg")
+study_area_polygon <- sf::read_sf("./data-spatial/transects/far-out_transects-3km-buffer-polygon.gpkg")
+
+nz_base_map_simplified <- 
+  ggplot(data = nz_polygon) + 
+  geom_sf(color = "black", fill = "lightgrey") + 
+  coord_sf(xlim = c(172.6, 173.8), ylim = c(-35, -34.2)) + 
+  theme_bw()
+
+data_id_profiles <- 
+  data %>% dplyr::distinct(id_profile_continuous, .keep_all = TRUE)
+
+map_profile_locations <-
+  nz_base_map_simplified + 
+  geom_point(data = data_id_profiles,
+             aes(x = longitude, y = latitude),
+             size = 2, shape = 21, fill = "red", alpha = 0.7) + 
+  geom_label_repel(data = data_id_profiles,
+                   aes(x = longitude, y = latitude, label = id_profile_continuous),
+                   box.padding   = 0.35, 
+                   point.padding = 0.5,
+                   force = 2,
+                   segment.color = 'grey50',
+                   max.overlaps = 20) + 
+  geom_sf(data = study_area_polygon, fill = NA) + 
+  coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
+  facet_wrap(~ voyage) + 
+  xlab("") + ylab("") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+map_profile_locations_sst <-
+  nz_base_map_simplified + 
+  geom_point(data = data_id_profiles,
+             aes(x = longitude, y = latitude, fill = tdr_sst),
+             size = 2, shape = 21) + 
+  scale_fill_viridis_c(option = "inferno", "Temperature (°C)") +
+  geom_sf(data = study_area_polygon, fill = NA) + 
+  coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
+  facet_wrap(~ voyage) + 
+  xlab("") + ylab("") + 
+  theme(legend.position = c(0.85, 0.21),
+      legend.text = element_text(size = 12, colour = "black"),
+      legend.title = element_text(size = 12, colour = "black"),
+      axis.title.y = element_text(size = 12, colour = "black"),
+      axis.text.y = element_text(size = 10, colour = "black"),
+      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+      strip.text = element_text(size = 10, colour = "black"),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank())
+
+# ggsave(map_profile_locations_sst,
+#        filename = "./results/TDR-profiles_map-SST.pdf",
+#        height = 14, width = 20, units = "cm", dpi = 300)
+
+map_profile_locations_mld <-
+  nz_base_map_simplified + 
+  geom_point(data = data_id_profiles,
+             aes(x = longitude, y = latitude, fill = (depth_mld)*-1),
+             size = 2, shape = 21) + 
+  scale_fill_viridis_c(option = "mako", "Mixed layer depth (m)") +
+  geom_sf(data = study_area_polygon, fill = NA) + 
+  coord_sf(xlim = c(172.6, 174), ylim = c(-35, -34)) + 
+  facet_wrap(~ voyage) + 
+  xlab("") + ylab("") + 
+  theme(legend.position = c(0.85, 0.21),
+        legend.text = element_text(size = 12, colour = "black"),
+        legend.title = element_text(size = 12, colour = "black"),
+        axis.title.y = element_text(size = 12, colour = "black"),
+        axis.text.y = element_text(size = 10, colour = "black"),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        strip.text = element_text(size = 10, colour = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
+
+# ggsave(map_profile_locations_mld,
+#        filename = "./results/TDR-profiles_map-MLD.pdf",
+#        height = 14, width = 20, units = "cm", dpi = 300)
+
+rm("nz_polygon", "study_area_polygon", "nz_base_map_simplified", 
+   "data_id_profiles", "map_profile_locations_sst", "map_profile_locations_mld")

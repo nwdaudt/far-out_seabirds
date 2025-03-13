@@ -26,8 +26,8 @@ library(iNEXT)
 df_wide_species <- 
   read.csv("./data-processed/df_wide_species_chl_sst.csv") %>% 
   dplyr::mutate(season = factor(season, 
-                                levels = c("summer", "autumn", 
-                                           "winter", "spring"),
+                                levels = c("Summer", "Autumn", 
+                                           "Winter", "Spring"),
                                 labels = c("Summer", "Autumn", 
                                            "Winter", "Spring")))
 
@@ -74,7 +74,7 @@ df_spp_aggregated <-
                   voyage == "05voyage" ~ "summer",
                   voyage == "06voyage" ~ "spring",
                   voyage == "07voyage" ~ "summer",
-                  voyage == "08voyage" ~ "winter",
+                  voyage == "08voyage" ~ "autumn",
                   voyage == "09voyage" ~ "spring",
                   voyage == "10voyage" ~ "autumn")) %>% 
   dplyr::mutate(season = factor(season, 
@@ -213,7 +213,7 @@ plot_gllvm_null_chl <-
              color = chl_a)) +
   geom_point(alpha = 0.6, size = 2) +
   scale_color_gradient(low = "lightgreen", high = "darkgreen", 
-                       name = "CHL-a [mg/m³]") + 
+                       name = "CHL-a (mg/m³)") + 
   xlab("Latent Variable 1") + ylab("") +
   facet_wrap(~ season, scales = "free") +
   theme_bw() +
@@ -236,7 +236,7 @@ plot_gllvm_null_sst <-
              color = sst)) +
   geom_point(alpha = 0.6, size = 2) +
   scale_color_gradient(low = "yellow2", high = "tomato3", 
-                       name = "SST [°C]") + 
+                       name = "SST (°C)") + 
   xlab("Latent Variable 1") + ylab("") +
   facet_wrap(~ season, scales = "free") +
   theme_bw() +
@@ -266,9 +266,9 @@ gllvm_null_tile <-
                         design = design) +
   patchwork::plot_annotation(tag_levels = 'A')
 
-ggsave(gllvm_null_tile,
-       filename = "./results/gllvm_null_lv1_biplot_tiled-A-B-C.pdf",
-       height = 22, width = 10, units = "cm", dpi = 300)
+# ggsave(gllvm_null_tile,
+#        filename = "./results/gllvm_null_lv1_biplot_tiled-A-B-C.pdf",
+#        height = 22, width = 10, units = "cm", dpi = 300)
 
 rm("df_plot_null_model", 
    "plot_gllvm_null_season", "plot_gllvm_null_chl", "plot_gllvm_null_sst",
@@ -281,7 +281,7 @@ rm("df_plot_null_model",
 
 # gllvm_null_lv1 <- readRDS("./results/gllvm_null_lv1_model.rds")
 
-### Unconstrained GLLVM, accounting predictors ####
+### Unconstrained GLLVM, accounting for predictors ####
 
 ## -----------------------------------------------------------------------------#
 ## From {gllvm} Vignette 6 -----------------------------------------------------#
@@ -293,7 +293,7 @@ rm("df_plot_null_model",
 
 ### Run models with PREDICTORS ---------------------------------------------- ##
 
-## Note: 'chl_a' in row number '33' returned a NaN value; 
+## Note: 'chl_a' in row number '33' extracted a 'NaN' value; 
 ## therefore we have to remove it to run the model.
 
 ### LV == 1
@@ -429,31 +429,27 @@ gllvm_pred_lv0_sst <-
 BIC(gllvm_pred_lv1_season.chl.sst,
     gllvm_pred_lv1_season.chl,
     gllvm_pred_lv1_season.sst,
-    gllvm_pred_lv1_season,
-    gllvm_pred_lv1_chl,
-    gllvm_pred_lv1_sst,
+    gllvm_pred_lv1_season
     gllvm_pred_lv0_season.chl.sst,
     gllvm_pred_lv0_season.chl,
     gllvm_pred_lv0_season.sst,
-    gllvm_pred_lv0_season,
-    gllvm_pred_lv0_chl,
-    gllvm_pred_lv0_sst)
+    gllvm_pred_lv0_season)
 
 #                                df       BIC
-# gllvm_pred_lv1_season.chl.sst 161   4080.798
-# gllvm_pred_lv1_season.chl     141   4035.291
-# gllvm_pred_lv1_season.sst     141   4053.940
-# gllvm_pred_lv1_season         121   4003.743
-# gllvm_pred_lv1_chl             81   4128.918
-# gllvm_pred_lv1_sst             81   4024.575
-# gllvm_pred_lv0_season.chl.sst 141   3989.721
-# gllvm_pred_lv0_season.chl     121   3945.677
-# gllvm_pred_lv0_season.sst     121   3962.863
-# gllvm_pred_lv0_season         101   3912.667     ### <--- Best model
-# gllvm_pred_lv0_chl             61 -1.924824e+178  ## Clearly something went wrong here
-# gllvm_pred_lv0_sst             61   3933.497
+# gllvm_pred_lv1_season.chl.sst 161   4117.918
+# gllvm_pred_lv1_season.chl     141   4071.175
+# gllvm_pred_lv1_season.sst     141   4086.409
+# gllvm_pred_lv1_season         121   4029.272
+# gllvm_pred_lv0_season.chl.sst 141   4026.870
+# gllvm_pred_lv0_season.chl     121  -8.277153e+205  ## Clearly something went wrong here
+# gllvm_pred_lv0_season.sst     121   11285.95
+# gllvm_pred_lv0_season         101   3942.357     ### <--- Best model
 
-## Residuals -- look great
+## Residuals -- both look great
+# pdf(file = "./results/gllvm_pred_lv0_sst_residuals.pdf")
+# plot(gllvm_pred_lv0_sst, which = 1:4, mfrow = c(2,2))
+# dev.off()
+# 
 # pdf(file = "./results/gllvm_pred_lv0_season_residuals.pdf")
 # plot(gllvm_pred_lv0_season, which = 1:4, mfrow = c(2,2))
 # dev.off()
@@ -462,13 +458,9 @@ rm("gllvm_pred_lv1_season.chl.sst",
    "gllvm_pred_lv1_season.chl",
    "gllvm_pred_lv1_season.sst",
    # gllvm_pred_lv1_season,
-   "gllvm_pred_lv1_chl",
-   "gllvm_pred_lv1_sst",
    "gllvm_pred_lv0_season.chl.sst",
    "gllvm_pred_lv0_season.chl",
-   "gllvm_pred_lv0_season.sst",
-   "gllvm_pred_lv0_chl",
-   "gllvm_pred_lv0_sst")
+   "gllvm_pred_lv0_season.sst")
 
 ### Save the model object in case needed later ------------------------------ ##
 
@@ -481,6 +473,7 @@ rm("gllvm_pred_lv1_season.chl.sst",
 
 ### As there is no LV, there is no way of making an 'ordination plot'.
 ### However, we can check the effects of 'season' on each species using coefficient plots
+
 
 ### Plot 'season' effect based on 'gllvm_pred_lv0_season' model ------------- ##
 
@@ -556,7 +549,7 @@ dev.off()
 ### After 'coefplot', re-set graphical parameters back to default
 par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
-### Co-occurrence patterns & Variation explained (caution! -- read 'NOTES') ####
+### Co-occurrence patterns and Variation explained (caution! -- read 'NOTES') ####
 
 ## From {gllvm} Vignette 1 -----------------------------------------------------#
 # << https://jenniniku.github.io/gllvm/articles/vignette1.html#studying-co-occurrence-patterns >>
@@ -577,7 +570,7 @@ par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 #
 # Thus, **on purpose**, for the next plot I used the model with ONE latent variable 
 # plus the same best predictor (season), such as the best selected model. 
-# By doing so, it allowed to get the residual species-correlation matrix and running the plot.
+# By doing so, it allowed to get the residual species-correlation matrix and producing the plot.
 # 
 # Not surprisingly, and reinforcing no need for latent variables, you will see
 # that the correlation between species basically collapses to zero when accounting 
@@ -592,118 +585,126 @@ residuals_corr_pred <- gllvm::getResidualCor(gllvm_pred_lv1_season)
 ### Plot co-occurrence patterns (residual correlation between species) ------ ##
 
 pdf(file = "./results/gllvm_co-occurrence_residual-correlation-matrices.pdf", 
-    height = 4, width = 12)
-par(mfrow = c(1,2))
+    height = 5, width = 12)
+par(mfrow = c(1,2),
+    # mar = c(0.1, 0.1, 10, 0.1),
+    oma = c(0, 1, 1, 0))
 
 # GLLVM Null
 corrplot::corrplot(residuals_corr_null, diag = FALSE, type = "lower", 
-                   method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8, 
-                   col = COL2('PuOr'), cl.cex = 0.68)
+                   method = "square", tl.srt = 25, tl.col = "grey20", tl.cex = 0.8, 
+                   col = COL2('PuOr'), cl.cex = 0.69,
+                   title = "A", mar = c(0,0,1,0))
 
 # GLLVM with predictor (season)
 corrplot::corrplot(residuals_corr_pred, diag = FALSE, type = "lower", 
-                   method = "square", tl.srt = 25, tl.col = "grey35", tl.cex = 0.8,
-                   col = COL2('PuOr'), cl.cex = 0.68)
+                   method = "square", tl.srt = 25, tl.col = "grey20", tl.cex = 0.8,
+                   col = COL2('PuOr'), cl.cex = 0.69,
+                   title = "B", mar = c(0,0,1,0))
 dev.off()
 
 # After 'correlation' plots we need to re-set graphical parameters back to default
-par(mfrow = c(1, 1))
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, oma = c(0, 0, 0, 0))
 
-### How much of the variation of the data did the predictor accounted for? -- ##
+### How much of the variation of the data did 'season' along accounted for? ----- ##
 
 # ## Get residual covariance matrix for each model
-# residuals_cov_null <- gllvm::getResidualCov(gllvm_null_lv1)
-# residuals_cov_pred_lv1_season <- gllvm::getResidualCov(gllvm_pred_lv1_season)
+residuals_cov_null <- gllvm::getResidualCov(gllvm_null_lv1)
+residuals_cov_pred_lv1_season <- gllvm::getResidualCov(gllvm_pred_lv1_season)
 # 
 # (1 - residuals_cov_pred_lv1_season$trace / residuals_cov_null$trace) * 100
-# ## >> 37.32462
+# ## >> 36.73511
 
 ## Note, however, that again I used the 'gllvm_pred_lv1_season' model which includes
 ## one latent variable. This calculations can get tricky with latent variables, so these
-## numbers are not to trust blindly. Nonetheless, it suggests ~40% of the variability
-## in the data was explained by season alone -- which is very high value for a single predictor.
+## numbers are not to trust blindly. Nonetheless, it suggests ~37% of the variability
+## in the data is explained by season alone.
 
 rm("residuals_corr_null", "residuals_corr_pred", "residuals_cov_null", "residuals_cov_pred_lv1_season")
 
-### Comparing predictions between GLLVMs accounting for season with(out) LVs and raw data ####
+### Comparing predictions between GLLVMs and raw data ####
 
-## Get predicted/expected values for unconstrained model *without* LVs (lv0)
+## Grounded by our expectations, we decided not to run the model "Y ~ sst"
+## So this section is an illustration only of an exploratory exercise
 
-fitmod_lv0 <- data.frame(
-  exp(
-    predict(gllvm_pred_lv0_season, newX = data.frame(season = df_spp_aggregated$season))
-    )
-  )
-
-fitmod_lv0 <- fitmod_lv0[order(df_spp_aggregated$season), ]
-
-fitlong_lv0 <- 
-  tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0), fitmod_lv0), 
-                key = "Species", value = "Number", 
-                Buller.s.shearwater:Fairy.prion)
-
-fitlong_lv0 <-
-  cbind(fitlong_lv0, Source = rep("LV = 0", times = nrow(fitlong_lv0)))
-
-## Get predicted/expected values for unconstrained model *with* LVs (lv2)
-
-fitmod_lv1 <- data.frame(
-  exp(
-    predict(gllvm_pred_lv1_season, newX = data.frame(season = df_spp_aggregated$season),
-            level = 0)
-  )
-)
-
-fitmod_lv1 <- fitmod_lv1[order(df_spp_aggregated$season), ]
-
-fitlong_lv1 <- 
-  tidyr::gather(data.frame(site = 1:nrow(fitmod_lv1), fitmod_lv1), 
-                key = "Species", value = "Number", 
-                Buller.s.shearwater:Fairy.prion)
-
-fitlong_lv1 <-
-  cbind(fitlong_lv1, Source = rep("LV = 1", times = nrow(fitlong_lv1)))
-
-rm("fitmod_lv1")
-
-## Reshape raw data to the same format
-yord <- spp_matrix[order(df_spp_aggregated$season), ]
-
-ylong <- 
-  tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0), yord), 
-                key = "Species", value = "Number", 
-                Buller.s.shearwater:Fairy.prion)
-
-ylong <-
-  cbind(ylong, Source = rep("Raw data", times = nrow(ylong)))
-
-rm("yord", "fitmod_lv0")
-
-## Bind dataframes
-df_lv0_lv1_raw <- rbind(fitlong_lv0, fitlong_lv1, ylong)
-
-rm("fitlong_lv0", "fitlong_lv1", "ylong")
-
-## Compare results through a plot
-
-plot_comparing_lv0_lv1_raw <-
-  ggplot(data = df_lv0_lv1_raw, aes(x = site, y = Number, colour = Source, shape = Source)) +
-  geom_point(alpha = 0.5) +
-  scale_color_manual(values = c("#000000", "#F8766D", "#00BA38")) +
-  facet_wrap(~ Species, scales = "free_y") + 
-  ylab("Count") + xlab("Sample") +
-  theme_bw() +
-  theme(legend.position = "bottom",
-        legend.title = element_blank(),
-        strip.text = element_text(size = 6),
-        axis.text = element_text(size = 6),
-        axis.title = element_text(size = 6))
-
-# ggsave(plot_comparing_lv0_lv1_raw,
-#        filename = "./results/comparing_lv0_lv1_raw.pdf",
-#        height = 15, width = 20, units = "cm", dpi = 300)
-
-rm("df_lv0_lv1_raw", "plot_comparing_lv0_lv1_raw")
+# ## Get predicted/expected values for model *without* LVs (lv0) and SEASON as predictor
+# 
+# fitmod_lv0_season <- data.frame(
+#   exp(
+#     predict(gllvm_pred_lv0_season, newX = data.frame(season = df_spp_aggregated$season))
+#   )
+# )
+# 
+# fitmod_lv0_season <- fitmod_lv0_season[order(df_spp_aggregated$season), ]
+# 
+# fitlong_lv0_season <- 
+#   tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0_season), fitmod_lv0_season), 
+#                 key = "Species", value = "Number", 
+#                 Buller.s.shearwater:Fairy.prion)
+# 
+# fitlong_lv0_season <-
+#   cbind(fitlong_lv0_season, Source = rep("Season, LV = 0", times = nrow(fitlong_lv0_season)))
+# 
+# ## Get predicted/expected values for model *without* LVs (lv0) and SEASON as predictor
+# 
+# fitmod_lv0_sst <- data.frame(
+#   exp(
+#     predict(gllvm_pred_lv0_sst, newX = data.frame(sst = df_spp_aggregated$sst))
+#   )
+# )
+# 
+# fitmod_lv0_sst <- fitmod_lv0_sst[order(df_spp_aggregated$season), ]
+# 
+# fitlong_lv0_sst <- 
+#   tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0_sst), fitmod_lv0_sst), 
+#                 key = "Species", value = "Number", 
+#                 Buller.s.shearwater:Fairy.prion)
+# 
+# fitlong_lv0_sst <-
+#   cbind(fitlong_lv0_sst, Source = rep("SST, LV = 0", times = nrow(fitlong_lv0_sst)))
+# 
+# rm("fitmod_lv0_sst")
+# 
+# ## Reshape raw data to the same format
+# yord <- spp_matrix[order(df_spp_aggregated$season), ]
+# 
+# ylong <- 
+#   tidyr::gather(data.frame(site = 1:nrow(fitmod_lv0_season), yord), 
+#                 key = "Species", value = "Number", 
+#                 Buller.s.shearwater:Fairy.prion)
+# 
+# ylong <-
+#   cbind(ylong, Source = rep("Raw data", times = nrow(ylong)))
+# 
+# rm("yord", "fitmod_lv0_season")
+# 
+# ## Bind dataframes
+# df_raw_lv0_season_sst <- rbind(fitlong_lv0_season, fitlong_lv0_sst, ylong)
+# 
+# rm("fitlong_lv0_season", "fitlong_lv0_sst", "ylong")
+# 
+# ## Compare results through a plot
+# 
+# plot_comparing_raw_lv0_season_sst <-
+#   ggplot(data = df_raw_lv0_season_sst, aes(x = site, y = Number, colour = Source, shape = Source)) +
+#   geom_point(alpha = 0.5) +
+#   scale_color_manual(values = c("grey50", "#F8766D", "#00BA38")) +
+#   facet_wrap(~ Species, scales = "free_y") + 
+#   ylab("Count") + xlab("Sample") +
+#   theme_bw() +
+#   theme(legend.position = "bottom",
+#         legend.title = element_blank(),
+#         strip.text = element_text(size = 6),
+#         axis.text = element_text(size = 6),
+#         axis.title = element_text(size = 6),
+#         # panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank())
+# 
+# # ggsave(plot_comparing_raw_lv0_season_sst,
+# #        filename = "./results/comparing_raw_lv0_season_sst.pdf",
+# #        height = 15, width = 20, units = "cm", dpi = 300)
+# 
+# rm("df_raw_lv0_season_sst", "plot_comparing_raw_lv0_season_sst")
 
 ### {iNEXT} - rarefaction curves ####
 

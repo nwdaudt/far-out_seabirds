@@ -654,6 +654,8 @@ df_FarOut_tidy <-
     .before = home_screen)
 
 ## Create 'season' col
+# Dec--Feb (summer); Mar--May (autumn); Jun--Aug (winter); Sep--Nov (spring)
+
 df_FarOut_tidy <- 
   df_FarOut_tidy %>%
   dplyr::mutate(season = dplyr::case_when(
@@ -664,7 +666,7 @@ df_FarOut_tidy <-
     voyage == "05voyage" ~ "summer",
     voyage == "06voyage" ~ "spring",
     voyage == "07voyage" ~ "summer",
-    voyage == "08voyage" ~ "winter",
+    voyage == "08voyage" ~ "autumn",
     voyage == "09voyage" ~ "spring",
     voyage == "10voyage" ~ "autumn"), 
     .before = home_screen)
@@ -759,11 +761,11 @@ df_FarOut_tidy <-
                                     yes = "Grey-faced petrel (Oi)", no = as.character(seabird_sp)))
 
 ### Lastly, let's create another 'group' column according to their feeding guilds/foraging behaviour
-# Large procellariids (albatrosses, giant petrels)
-# Medium procellariids (petrels, shearwaters)
-# Small procellariids (storm petrels, diving-petrels, prions)
-# Sulids (gannet) 
-# Larids (skuas, gulls)
+# Large procellariids (albatrosses, giant petrels);
+# Medium procellariids (petrels, shearwaters);
+# Small procellariids (storm petrels, diving-petrels, prions);
+# Sulids (gannet);
+# Larids (skuas, gulls);
 
 df_FarOut_tidy <- 
   df_FarOut_tidy %>% 
