@@ -1,12 +1,12 @@
-# Seasonality rather than oceanography drives assemblages of seabird species off northeast Aotearoa New Zealand
-
-**This is a work in progress. The README and files will be constantly being updated.**
+# Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa New Zealand
 
 In this study, we used a mix of descriptive spatial and summary analyses, diversity curves and model-based multivariate statistics to describe assemblages of seabird species off Northland, northeast Aotearoa New Zealand.
 
-Data were collected with the [Far Out Ocean Research Collective](https://www.farout.org.nz/). The fieldwork of this study was in the rohe moana (territory) of the Māori iwi (tribe) Ngāti Kuri, who shares the custody of the data. Following the CARE principles and the wish from Ngāti Kuri to not release any data from their territory, the raw data won't be open access. However, we hope to make some data available eventually (likely the 'aggregated' data for multivariate analysis).
+Data were collected with the [Far Out Ocean Research Collective](https://www.farout.org.nz/). The fieldwork of this study was in the rohe moana (territory) of the Māori iwi (tribe) Ngāti Kuri, who shares the custody of the data. Following the CARE principles and the wish from Ngāti Kuri to not release any data from their territory, the raw data won't be open access.
 
-The processing of the data and analyses code is, however, all available in this repository for transparency.
+The processing of the data and analyses code are, however, all available in this repository for transparency.
+
+Please contact Far Out members if you require the raw or aggregated data, and they will liaise with Ngāti Kuri.
 
 ***
 
@@ -51,7 +51,7 @@ far-out_seabirds
 
 ## How to run
 
-**(Work in progress...)**
+*There will be shortly a README file in "./scripts" detailing the whole workflow, but the codes are named with numbers so you can easily follow them in the correct order.*
 
 ### Environment
 
@@ -90,4 +90,4 @@ This repository is under CC BY 4.0 license.
 
 Please refer to the original paper if using any piece of this repository.
 
-Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(in prep)*. Seasonality rather than oceanography drives assemblages of seabird species off northeast Aotearoa New Zealand.
+Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(under review)*. Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa New Zealand.
