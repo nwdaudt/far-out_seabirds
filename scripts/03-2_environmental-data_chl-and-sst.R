@@ -11,7 +11,7 @@ library(stringr)
 library(sf)
 library(raster)
 library(ggplot2)
-
+library(patchwork)
 # library(mapview) ## Only used for checking spatial data
 
 # library(terra)
@@ -184,7 +184,7 @@ chl_plot_zoomin <-
 # rm("chl_plot_zoomin")
 # gc()
 
-## Extract CHL data for each seabird count and create a violin-plot ####
+## Extract CHL data for each seabird count ####
 
 # Note: 'voyage' and 'file_dirs' were created in the previous code session
 # Note 2: need to run the code "matching" seabird obs with raster name, too (L 131)
@@ -239,44 +239,9 @@ for(voyage in voyages){
   rm("voyage", "voyage_name", "file_dirs_voyage", "df_sample", "raster_dates")
 }
 
-
-chl_SD <- 
-  df_seabirds_chl %>% 
-  dplyr::group_by(voyage) %>% 
-  dplyr::summarise(chl_a_SD = round(sd(chl_a, na.rm = TRUE), digits = 2)) %>% 
-  dplyr::pull(chl_a_SD) %>% 
-  as.character()
-
-## Voyage 01 had only one observation within the study area, so the SD value is 'NA'
-## I'll take advantage of this to include this information in the figure
-chl_SD[1] <- "SD ="
-
 df_seabirds_chl$season <- factor(df_seabirds_chl$season,
-                                 levels = c("summer", "autumn", "winter", "spring"),
-                                 labels = c("Summer", "Autumn", "Winter", "Spring"))
-
-chl_violin_voyage <-
-  ggplot(df_seabirds_chl,
-         aes(x = voyage, y = chl_a, color = season, fill = season)) + 
-  geom_point(position = "jitter", size = 0.2) +
-  geom_violin(alpha = 0.5) +
-  scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
-                               "Winter" = "#E15759", "Spring" = "#76B7B2"),
-                    name = "") +
-  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
-                               "Winter" = "#E15759", "Spring" = "#76B7B2"),
-                    name = "") +
-  xlab("") + ylab("Chlorophyll-a concentration (mg/m³)") +
-  annotate("text", x = 1:10, y = 0.7, label = chl_SD, size = 2.5) +
-  theme_bw() + 
-  theme(axis.text = element_text(size = 8),
-        axis.text.x = element_text(size = 8, 
-                                   angle = 45, vjust = 1, hjust = 1))
-
-# ggsave(chl_violin_voyage,
-#        filename = "./results/EDA/chl_violin-by-voyage.pdf",
-#        height = 10, width = 12, units = "cm")
-
+                                     levels = c("summer", "autumn", "winter", "spring"),
+                                     labels = c("Summer", "Autumn", "Winter", "Spring"))
 
 ## Clean unused cols
 df_seabirds_chl <- df_seabirds_chl %>% dplyr::select(- c(raster_name, raster_date))
@@ -286,7 +251,7 @@ df_seabirds_chl <- df_seabirds_chl %>% dplyr::select(- c(raster_name, raster_dat
 #           file = "./data-processed/df_wide_species_chl.csv",
 #           row.names = FALSE)
 
-## Download, read and extract SST, and create a violin-plot ####
+## Download, read and extract SST ####
 
 # df_seabirds_chl <- read.csv("./data-processed/df_wide_species_chl.csv")
 
@@ -341,6 +306,55 @@ for(date_sst in dates_sst){
   rm("date_sst", "r", "df_sample", "sf_sample")
 }
 
+## Save 'df_seabirds_chl_sst' ####
+
+write.csv(df_seabirds_chl_sst,
+          file = "./data-processed/df_wide_species_chl_sst.csv",
+          row.names = FALSE)
+
+## Violin plots SST and CHL ####
+
+# df_seabirds_chl_sst <- read.csv("./data-processed/df_wide_species_chl_sst.csv")
+
+### CHL 
+
+chl_SD <- 
+  df_seabirds_chl_sst %>% 
+  dplyr::group_by(voyage) %>% 
+  dplyr::summarise(chl_a_SD = round(sd(chl_a, na.rm = TRUE), digits = 2)) %>% 
+  dplyr::pull(chl_a_SD) %>% 
+  as.character()
+
+## Voyage 01 had only one observation within the study area, so the SD value is 'NA'
+## I'll take advantage of this to include this information in the figure
+chl_SD[1] <- "SD ="
+
+df_seabirds_chl_sst$season <- factor(df_seabirds_chl_sst$season,
+                                     levels = c("Summer", "Autumn", "Winter", "Spring"),
+                                     labels = c("Summer", "Autumn", "Winter", "Spring"))
+
+chl_violin_voyage <-
+  ggplot(df_seabirds_chl_sst,
+         aes(x = voyage, y = chl_a, color = season, fill = season)) + 
+  geom_point(position = "jitter", size = 0.2) +
+  geom_violin(alpha = 0.5) +
+  scale_fill_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                               "Winter" = "#E15759", "Spring" = "#76B7B2"),
+                    name = "") +
+  scale_color_manual(values = c("Summer" = "#4E79A7", "Autumn" = "#F28E2B", 
+                                "Winter" = "#E15759", "Spring" = "#76B7B2"),
+                     name = "") +
+  xlab("") + ylab("Chlorophyll-a concentration (mg/m³)") +
+  annotate("text", x = 1:10, y = 0.7, label = chl_SD, size = 2.5) +
+  theme_bw() + 
+  theme(axis.text = element_text(size = 8),
+        axis.text.x = element_text(size = 8, angle = 45, vjust = 1, hjust = 1))
+
+# ggsave(chl_violin_voyage,
+#        filename = "./results/EDA/chl_violin-by-voyage.pdf",
+#        height = 10, width = 12, units = "cm")
+
+### SST
 
 sst_SD <- 
   df_seabirds_chl_sst %>% 
@@ -368,18 +382,21 @@ sst_violin_voyage <-
   annotate("text", x = 1:10, y = 23, label = sst_SD, size = 2.5) +
   theme_bw() + 
   theme(axis.text = element_text(size = 8),
-        axis.text.x = element_text(size = 8, 
-                                   angle = 45, vjust = 1, hjust = 1))
+        axis.text.x = element_text(size = 8, angle = 45, vjust = 1, hjust = 1),
+        legend.position = "none")
 
 # ggsave(sst_violin_voyage,
 #        filename = "./results/EDA/sst_violin-by-voyage.pdf",
 #        height = 10, width = 12, units = "cm")
 
-## Save 'df_seabirds_chl_sst' ####
+### Patchwork them
+violin_SST.CHL <- 
+  sst_violin_voyage + chl_violin_voyage + 
+  patchwork::plot_annotation(tag_levels = 'A')
 
-write.csv(df_seabirds_chl_sst,
-          file = "./data-processed/df_wide_species_chl_sst.csv",
-          row.names = FALSE)
+# ggsave(violin_SST.CHL,
+#        filename = "./results/EDA/violin_SST-CHL-by-voyage.png",
+#        height = 10, width = 20, units = "cm")
 
 ## CHL/SST (point) maps ####
 
