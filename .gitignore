@@ -7,14 +7,24 @@ data-spatial/
 # NZ coastline and Isobaths are vectors, no need to add to GitHub (data-spatial/nz) 
 # Transects et al are build through the scripts, so don't need to share either (data-spatial/transects)
 
-# Exploratory Data Analysis (EDA) -- not necessarily share them all
+# Exploratory Data Analysis (EDA) and study area sub-plots
 results/EDA
 # No need to share CSV and RDS files
 results/*.csv
 results/*.rds
 
-# Rmd/TeX files -- not to share, yet
-rmd_tex/
+# Rmd and other miscellaneous text files (internal rounds of revisions, etc.)
+rmd_tex/misc
+# Ignore auxiliary files for LaTeX, ...
+rmd_tex/TeX/*.log
+rmd_tex/TeX/*.spl
+rmd_tex/TeX/*.bbl
+# ...and MS figures (PDFs)
+rmd_tex/TeX/*.pdf
+# No need to share declaration for the journal
+rmd_tex/declarationStatement.docx
+# Neither the original DOC file with Supplementary Material
+ms_seabirds-northland-nz_supp-material.doc
 
 # Summary of results for Ngati Kuri
 # High-level wording without all the nitty-griddies
