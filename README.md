@@ -1,10 +1,10 @@
-# Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa New Zealand
+# Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa/New Zealand
 
-In this study, we used a mix of descriptive spatial and summary analyses, diversity curves and model-based multivariate statistics to describe assemblages of seabird species off Northland, northeast Aotearoa New Zealand.
+In this study, we used a mix of descriptive spatial and summary analyses, diversity curves and model-based multivariate statistics to describe assemblages of seabird species off Northland, northeast Aotearoa/New Zealand.
 
-Data were collected with the [Far Out Ocean Research Collective](https://www.farout.org.nz/). The fieldwork of this study was in the rohe moana (territory) of the Māori iwi (tribe) Ngāti Kuri, who shares the custody of the data. Following the CARE principles and the wish from Ngāti Kuri to not release any data from their territory, the raw data won't be open access.
+Data were collected by the [Far Out Ocean Research Collective](https://www.farout.org.nz/). The fieldwork of this study was in the rohe moana (territory) of the Māori iwi (tribe) Ngāti Kuri, who shares the custody of the data. 
 
-The processing of the data and analyses code are, however, all available in this repository for transparency.
+Following the CARE principles and the wish from Ngāti Kuri not to release any data from their territory, the data will not be open access. The processing of the data and analyses code are, however, all available in this repository for transparency.
 
 Please contact Far Out members if you require the raw or aggregated data, and they will liaise with Ngāti Kuri.
 
@@ -12,7 +12,7 @@ Please contact Far Out members if you require the raw or aggregated data, and th
 
 ## Project structure
 
-Workspace is set as shown below. All folders in [square brackets] are not tracked with `git`
+Workspace is set as shown below. All folders in [square brackets] are not tracked with `git`.
 
 ```shell
 far-out_seabirds
@@ -27,7 +27,7 @@ far-out_seabirds
 │   └── ./transects
 ├── ./renv
 ├── ./scripts
-│   ├── [README.md]
+│   ├── README.md
 │   ├── 00a_renv-set-up.R
 │   ├── 00b_create-sf-transects.R
 │   ├── 01_data-wrangling_raw-to-standardised.R
@@ -39,19 +39,21 @@ far-out_seabirds
 │   ├── source.R
 │   └── study-area-map.R
 ├── ./results
-│   ├── [./EDA] ** untracked, although some figures are presented in the manuscript
+│   ├── [./EDA] ** untracked folder
 │   └── PDF and CSV files with results
-├── [./rmd_tex] ** untracked folder containing files for journal submission
-│   ├── [./ms_seabirds-northland-nz]
-│   └── [./TeX]
-│       ├── .tex
-│       └── .bib
+├── [./rmd_tex] 
+│   ├── [./misc] ** untracked folder
+│   └── ./TeX
+│       ├── ms-JMARSYST.tex
+│       ├── elsarticle.cls
+│       ├── elsarticle-harv.bst
+│       └── mybibfile.bib
 └── far-out_seabirds.Rproj
 ```
 
 ## How to run
 
-*There will be shortly a README file in "./scripts" detailing the whole workflow, but the codes are named with numbers so you can easily follow them in the correct order.*
+You should be able to reproduce/follow all analyses using scripts in [./scripts](https://github.com/nwdaudt/far-out_seabirds/tree/main/scripts). The `./scripts/README.md` file will guide you through each step.
 
 ### Environment
 
@@ -90,4 +92,4 @@ This repository is under CC BY 4.0 license.
 
 Please refer to the original paper if using any piece of this repository.
 
-Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(under review)*. Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa New Zealand.
+Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(under review)*. Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa/New Zealand. Journal of Marine Systems.
