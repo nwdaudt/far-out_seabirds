@@ -92,4 +92,4 @@ This repository is under CC BY 4.0 license.
 
 Please refer to the original paper if using any piece of this repository.
 
-Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. *(under review)*. Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa/New Zealand. Journal of Marine Systems.
+Daudt NW; Guerra M; Brough T; Dwyer SL; Zaeschmar JR; Schofield MR; Smith RO; Bugoni L; Woehler EJ; Rayment WJ. (2026). Migratory species strongly affect seabird biomass in seasonal assemblages off northeast Aotearoa/New Zealand. Journal of Marine Systems *in press*, (artnum) 104201. https://doi.org/10.1016/j.jmarsys.2026.104201
